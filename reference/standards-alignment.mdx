@@ -1,0 +1,181 @@
+---
+title: "ARTIFEX Labs Standards and Research Alignment Guide"
+sidebarTitle: "Standards Alignment"
+description: "How ARTIFEX Labs maps each pipeline component to NIST AI 800-3, ISO/IEC 42119-2/3, MLCommons AILuminate, BBOM Layers 1-10, and cited research."
+---
+
+ARTIFEX Labs implements the 2026 measurement science framework for AI safety evaluation. The suite is built on the principle, articulated in NIST AI 800-3 (2026), that the field requires a fundamental transition from simplistic task-based benchmarking to the comprehensive application of measurement science. Every pipeline component — from data ingestion through hazard routing, LLM judging, and HITL querying — maps to a specific standard or peer-reviewed paper, and that mapping is machine-verifiable through the Benchmark Bill of Materials (BBOM) rubric gates baked into each notebook run.
+
+## Standards Implemented
+
+ARTIFEX Labs targets compliance with the following formal standards. The table below shows which standard is implemented, the version in effect, and how the ARTIFEX pipeline realises the requirement.
+
+| Standard | Version | ARTIFEX Implementation |
+|---|---|---|
+| NIST AI 800-3 | 2026 | GLMM variance decomposition separating between-item difficulty, within-item jury disagreement, cross-lingual DIF, and annotation noise; explicit distinction between benchmark accuracy and generalised accuracy |
+| ISO/IEC 42119-2 | October 2025 | Testing techniques applied across the full AI lifecycle — data ingestion QC, embedding validation, judge calibration, and output auditing |
+| ISO/IEC 42119-3 | October 2025 | Verification and validation approaches, including IRT 3PL item-level diagnostics and the five-facet validity framework |
+| MLCommons AILuminate | 2026 | Structured risk assurance protocol — BLOCK / WARNING / PASS gates, majority-vote judging, and the BBOM supply-chain audit requirement |
+| BBOM (Benchmark Bill of Materials) | Layer 1–10 | All 11 pipeline rubric gates across dataset, embedding, clustering, judge, routing, and HITL layers |
+
+### NIST AI 800-3 — GLMM Variance Decomposition
+
+NIST AI 800-3 requires that benchmark developers decompose total measurement variance into interpretable sources. ARTIFEX implements this as:
+
+```text
+Total Variance
+  = Between-Item Variance  (difficulty b_i, stored per sample in FiftyOne)
+  + Within-Item Variance   (jury disagreement rate across judge ensemble)
+  + Cross-Lingual Variance (DIF score — dialect divergence between locales)
+  + Residual               (annotation noise, estimated from IRR data)
+```
+
+The standard also mandates a clear distinction between benchmark accuracy (performance on this specific item set) and generalised accuracy (expected performance on the broader construct). ARTIFEX addresses this through IRT 3PL calibration, where item discrimination (`a_i`), difficulty (`b_i`), and pseudo-guessing (`c_i`) parameters allow you to estimate the latent safety ability (`θ`) of a model under test (MUT) separately from its raw benchmark score.
+
+### ISO/IEC 42119-2 and 42119-3
+
+ISO/IEC 42119-2 covers testing techniques across the AI lifecycle. In ARTIFEX, this maps to: `ingest.py` for data-layer QC (schema validation, length checks, duplicate detection, image integrity), `evaluator.py` for execution-layer scoring (batched encoding, AMP inference, checkpoint/resume), and the RUBRIC_LOG for audit-layer traceability. ISO/IEC 42119-3 covers verification and validation, realised through the five-facet validity framework that each notebook is designed to address:
+
+| Validity Facet | Notebook | Primary Instrument |
+|---|---|---|
+| Content | v7.2 Spanish Benchmark | `cultural_taxonomy.yaml` × BCP-47 coverage |
+| Construct | v7.1 Core Swarm | `BooleanRubricResult` gates + BERTopic coherence |
+| Criterion | v7.5 English Cultural Alignment | `evaluate_classifications()` + IRT θ̂ |
+| External | v7.3 Dialect Divergence | DIF analysis + common-person IRT linking |
+| Consequential | v7.4 Ethical Feedback Loop + safety_routing | Time-horizon metric + feedback loop audit |
+
+### MLCommons AILuminate 2026
+
+AILuminate 2026 introduced structured risk assurance as a requirement for benchmark-grade safety evaluation. ARTIFEX implements the three-verdict gate system (`BLOCK`, `WARNING`, `PASS`) in the Spanish AILuminate notebook (500 prompts × 4 jailbreak categories, 3-judge majority voting using JSR/CCR metrics), and satisfies the BBOM supply-chain audit requirement through the compliance manifest described below.
+
+## BBOM — Benchmark Bill of Materials
+
+The BBOM is a NIST 2026 framework that treats a safety benchmark as a supply chain: every component — the data source, the embedding model, the judge, the scope definition, and the execution environment — must be declared, versioned, and auditable. ARTIFEX implements BBOM compliance across 10 layers covering 11 pipeline rubric gates.
+
+### Layer Summary
+
+| Layer | Scope | Key Gate |
+|---|---|---|
+| Layer 1 — Intent | Cross-lingual jailbreak and construct drift verification | Stated evaluation intent is machine-readable |
+| Layer 2 — Construct | Operational safety boundaries under perspectivist alignment | Construct definition is explicit and bounded |
+| Layer 3 — Dataset | Dataset size, coverage metadata, dialect validation | `dataset_size_sufficient`, `coverage_metadata_present`, `dialect_validated` |
+| Layer 4 — Embedding | Embedding model identity, version, and ensemble readiness | `embedding_ensemble_ready` |
+| Layer 5 — System Under Test | MUT identifier and quantization declaration | Model ID and `quantization` field present |
+| Layer 6 — Judge | Judge model identity, calibration standard | Gwet AC2 ≥ 0.85 declared |
+| Layer 7 — Clustering | Soft membership availability, cluster stability | `soft_membership_available`, `cluster_stability_sufficient` |
+| Layer 8 — Human Calibration | Human calibration set availability, bias correctability | `human_calibration_present`, `judge_bias_correctable` |
+| Layer 9 — Scope | Target language profile, modality declaration | Language profile and modality fields present |
+| Layer 10 — Lifecycle | Execution timestamp, A.1–G.1 compliance checklist | `execution_timestamp` recorded, checklist verified |
+
+The 11 pipeline rubric gates (some layers contribute multiple gates) are evaluated as `BooleanRubricResult` dataclass instances and appended to `RUBRIC_LOG` throughout each notebook run. The full log is dumped in the final audit cell.
+
+<Note>
+  Items with negative IRT discrimination (`a_i < 0`) indicate annotation errors and trigger a hard BBOM Layer 9 failure gate. Any item flagged by this gate must be reviewed by the security liaison before the record can be included in a scored benchmark run.
+</Note>
+
+### Reading `bbom_report.json`
+
+`bbom_report.json` is generated at the end of each notebook run and captures the top-level BBOM state for that execution. Key fields to check:
+
+```json
+{
+  "bbom_version": "1.0",
+  "run_timestamp": "2026-05-23 21:56:51 UTC",
+  "notebook": "ARTIFEX_v9_Ethical_Feedback_AILuminate.ipynb",
+  "embedding_model": "paraphrase-multilingual-MiniLM-L12-v2",
+  "safety_routing": {
+    "standard": "MLCommons AILuminate v1.0",
+    "verdicts": { "PASS": 50 }
+  },
+  "compliance": [
+    "NIST AI 800-3",
+    "MLCommons AILuminate v1.0",
+    "ISO/IEC 42119-2"
+  ]
+}
+```
+
+The `compliance` array lists the standards the run asserts conformance with. The `safety_routing.verdicts` object shows the distribution of `PASS`, `WARNING`, and `BLOCK` verdicts across all scored records. A run where all verdicts are `PASS` does not necessarily indicate a safe model — it indicates that all responses met the cosine-similarity threshold; inspect individual `similarity` values in the output CSV to understand the distribution.
+
+### Reading `compliance_bbom_manifest.json`
+
+`compliance_bbom_manifest.json` is the per-run Layer 1–10 compliance manifest. It records the system-under-test identifier, the judge calibration standard, the target language scope, the modality declaration, the execution timestamp, and the A.1–G.1 compliance checklist status. Use this file as the primary artefact for external audit or partner review:
+
+```json
+{
+  "layer_1_intent": "Cross-lingual jailbreak and construct drift verification",
+  "layer_2_construct": "Operational safety boundaries under perspectivist alignment",
+  "layer_5_system_under_test": {
+    "identifier": "ARTIFEX-v7.2-CO-SWARM",
+    "quantization": "FP16 (Simulated Backend Architecture)"
+  },
+  "layer_6_judge": {
+    "model_id": "Gemini-2.5-Flash-Structured-Outputs",
+    "calibration_standard": "Gwet AC2 >= 0.85"
+  },
+  "layer_9_scope": {
+    "target_language_profile": "es-CO (Colombian Contextual Dialect Profile)",
+    "modalities": "Interleaved Text-and-Image Curation"
+  },
+  "layer_10_lifecycle": {
+    "execution_timestamp": "2026-05-23 21:58:50 UTC",
+    "guide_llm_compliance_compliance": "A.1-G.1 Checklist Verified"
+  }
+}
+```
+
+<Tip>
+  Both output files are generated automatically at the end of a notebook run. If you are running `evaluator.py` directly via the CLI rather than through a notebook, BBOM artefacts are not automatically produced — review the notebook's final audit cell output for the equivalent compliance data.
+</Tip>
+
+## Key Research Papers
+
+The following papers directly informed ARTIFEX methodology. Each row maps a specific paper to the pipeline component it grounds.
+
+| Paper | Venue | ARTIFEX Application |
+|---|---|---|
+| Adaptive Precise Boolean Rubrics | Google 2025 ([arXiv:2503.23339](https://arxiv.org/abs/2503.23339)) | `BooleanRubricResult` dataclass; all 11 pipeline rubric gates |
+| X-Value Cross-Lingual Values | Alibaba / ZJU 2026 ([arXiv:2602.17283](https://arxiv.org/abs/2602.17283)) | Consensus / Pluralism audit layer in cross-lingual value alignment |
+| Beyond Labels HITL | Georgia Tech 2026 ([arXiv:2602.15738](https://arxiv.org/abs/2602.15738)) | Triplet active learning queries in the HITL routing layer |
+| Benchmark Bill of Materials (BBOM) | NIST 2026 | Supply-chain framing; all 11 pipeline rubric gates |
+| Jailbreak Distillation | Johns Hopkins / MSFT 2025 ([arXiv:2505.22037](https://arxiv.org/abs/2505.22037)) | Renewable safety benchmarking; Spanish AILuminate jailbreak notebook |
+| LPP Entropy Routing | AAMAS 2026 ([arXiv:2601.07006](https://arxiv.org/abs/2601.07006)) | Jury routing architecture replacing brittle entropy thresholding |
+| Beyond Words: Multilingual Red Teaming | ACL 2025 ([ACL Anthology](https://aclanthology.org/2025.llmsec-1.15.pdf)) | Multilingual attack surface analysis; non-English hazard examples in taxonomy |
+
+<Info>
+  The full research landscape tracked by ARTIFEX Labs spans 18+ papers published between 2025 and 2026. The table above includes the seven papers with the most direct pipeline implementation impact. For the complete list including Multi3Hate, Afri-MCQA, SAGE, CAIA, Gaia2, RubricBench, Bangla Annotator Bias, and Aetheria Governance, see the `2026 Research Landscape` section of `README.md`.
+</Info>
+
+## Reproducibility Checklist
+
+Every ARTIFEX notebook run is expected to produce a verifiable audit trail. Before publishing results from a run, confirm the following:
+
+<CodeGroup>
+
+```bash Verify BBOM artefacts exist
+ls -la bbom_report.json compliance_bbom_manifest.json
+# Both files must be present and non-empty
+
+# Check that the run timestamp in bbom_report.json matches your run
+python -c "import json; d=json.load(open('bbom_report.json')); print(d['run_timestamp'], d['notebook'])"
+```
+
+```bash Verify compliance standards declared
+python -c "
+import json
+d = json.load(open('bbom_report.json'))
+required = {'NIST AI 800-3', 'MLCommons AILuminate v1.0', 'ISO/IEC 42119-2'}
+declared = set(d.get('compliance', []))
+missing = required - declared
+print('Missing standards:', missing if missing else 'None — all present')
+"
+```
+
+```bash Check RUBRIC_LOG for gate failures
+# In a notebook context, inspect RUBRIC_LOG after Cell 13:
+# [r for r in RUBRIC_LOG if not r.passed]
+# For CLI runs, review the notebook's final audit cell output in the .html EDA report.
+grep -i "bbom_l9_failed\|measurement_risk\|low_stat_power" artifex_v74_outputs/run_meta_*.json
+```
+
+</CodeGroup>

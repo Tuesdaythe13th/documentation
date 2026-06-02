@@ -1,0 +1,106 @@
+---
+title: "ARTIFEX v8 Agentic Multi-Agent Alignment Evaluation"
+sidebarTitle: "Agentic Alignment"
+description: "Evaluate multi-agent AI safety using LangGraph routing, VLM auditing, and an automated adversarial red-teaming loop, with per-agent alignment scoring."
+---
+
+The v8 Agentic Alignment Engine notebook extends ARTIFEX safety evaluation into the multi-agent domain — evaluating not just individual model responses but the safety behavior of interconnected agent systems that route tasks, call tools, and produce outputs through multi-step pipelines. It uses **LangGraph** for declarative multi-agent workflow routing, **Vision-Language Model (VLM) auditing** to evaluate image-grounded outputs, and an **automated adversarial red-teaming** loop to systematically probe the boundaries of a system's safety guardrails. Its primary validity target is **construct validity**: verifying that the evaluation correctly captures the safety constructs it claims to measure in the specific context of agentic, multi-step AI systems.
+
+## Open in Colab
+
+Click the link below to open the notebook directly in Google Colab:
+
+**[https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/ARTIFEX_v8_Agentic_Alignment_Engine.ipynb](https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/ARTIFEX_v8_Agentic_Alignment_Engine.ipynb)**
+
+A companion **v8 End-to-End Safety Pipeline** notebook is also available for running the complete evaluation flow from data ingestion through final reporting:
+
+**[https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/ARTIFEX_v8_E2E_Safety_Pipeline.ipynb](https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/ARTIFEX_v8_E2E_Safety_Pipeline.ipynb)**
+
+| Property | Value |
+|---|---|
+| **Version** | v8 |
+| **Validity Facet** | Construct validity |
+| **Standards** | NIST AI 800-3 · ISO/IEC 42119-2/3 · MLCommons AILuminate |
+
+## What This Notebook Does
+
+The v8 Agentic Alignment Engine submits evaluation scenarios to a multi-agent system and audits the safety of each routing decision, tool call, and final output. LangGraph defines the agent graph — specifying which agents handle which input types, what tools they can invoke, and how outputs are passed between agents. At each node in the graph, the notebook applies `BooleanRubricResult` gates to evaluate whether the routing decision, tool call, and output all meet safety requirements. VLM auditing extends this to image-grounded outputs: the notebook can evaluate whether a vision-language model's response to a multimodal prompt respects the same safety constraints as a text-only response. The automated red-teaming loop then systematically generates adversarial inputs designed to cause safety failures, documents every failure, and writes a structured red-team failure manifest.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="LangGraph Multi-Agent Routing" icon="diagram-project">
+    **LangGraph** (from LangChain) provides a declarative graph-based framework for multi-agent workflows. The notebook defines a safety evaluation graph where each node is an agent (e.g., a router, a tool-calling agent, a judge), and edges represent routing decisions. Every edge transition is gated by a `BooleanRubricResult` safety check.
+  </Card>
+  <Card title="VLM Auditing" icon="image">
+    **Vision-Language Model auditing** evaluates the safety of multimodal outputs — responses that reference, describe, or generate image content. The notebook submits image-grounded prompts to a VLM and applies the same Boolean rubric pipeline to the resulting text output, with additional image-content safety gates.
+  </Card>
+  <Card title="Automated Adversarial Red-Teaming" icon="shield-halved">
+    The red-teaming loop generates adversarial prompts using jailbreak distillation techniques (Johns Hopkins/MSFT, arXiv:2505.22037) and submits them to the multi-agent system. Every failure — where the system produces an unsafe output in response to an adversarial input — is logged to a structured **red-team failure manifest**.
+  </Card>
+  <Card title="Multi-Agent Alignment Scoring" icon="star-half-stroke">
+    The notebook computes an **alignment score** for each agent in the pipeline, measuring how consistently that agent applies safety constraints across routing conditions, input types, and adversarial inputs. Low alignment scores surface agents that are safety weak points in the multi-agent system.
+  </Card>
+</CardGroup>
+
+## Step-by-Step Walkthrough
+
+<Steps>
+  <Step title="Open the notebook in Colab">
+    Click the Colab link above. The v8 notebook is pre-configured with a sample LangGraph agent graph for demonstration. You can modify the graph definition to match your own multi-agent system.
+  </Step>
+  <Step title="Add API keys">
+    Add `OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY` to Colab Secrets. The v8 notebook requires at least one LLM API key to instantiate the agent nodes and run the LLM-as-Judge evaluation step.
+  </Step>
+  <Step title="Configure your agent graph">
+    In the LangGraph configuration cell, define your agent nodes and edges. Each node must implement the ARTIFEX agent interface — accepting a prompt payload and returning a structured response with `output`, `routing_decision`, and `confidence` fields.
+  </Step>
+  <Step title="Run all cells">
+    Select **Runtime → Run all**. The pipeline runs the standard evaluation scenarios through your agent graph, audits each routing decision with `BooleanRubricResult` gates, runs VLM auditing on any image-grounded outputs, and then executes the red-teaming loop.
+  </Step>
+  <Step title="Review the red-team failure manifest">
+    The red-team failure manifest (`red_team_failures.json`) lists every adversarial input that caused a safety failure, the agent node where the failure occurred, the routing decision made, and the unsafe output produced. Use this manifest to prioritize safety hardening in your multi-agent pipeline.
+  </Step>
+  <Step title="Use the E2E Safety Pipeline">
+    For a complete end-to-end run — from raw data ingestion through final compliance reporting — open the companion v8 E2E Safety Pipeline notebook at the second Colab link above. It wraps the Agentic Alignment Engine in a full BBOM-compliant pipeline with data ingestion QC, RUBRIC_LOG audit, and final artifact export.
+  </Step>
+</Steps>
+
+<Tip>
+  If you want to evaluate a specific multi-agent architecture (e.g., a retrieval-augmented generation pipeline or a code-generation agent) against the ARTIFEX safety rubrics, the v8 notebook is the right starting point. Define your agent graph in the LangGraph configuration cell and run the evaluation — you do not need to modify any rubric or judge logic.
+</Tip>
+
+## v9 Spanish AILuminate Jailbreak Benchmark
+
+This page also covers the **v9 Spanish AILuminate** notebook, which applies large-scale jailbreak evaluation to Spanish-language safety systems.
+
+**Colab link:** [https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/spanish_ailuminate_hf_colab.ipynb](https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/spanish_ailuminate_hf_colab.ipynb)
+
+| Property | Value |
+|---|---|
+| **Version** | v9 |
+| **Validity Facet** | Content validity |
+| **Scale** | 500 jailbreak prompts × 4 categories |
+| **Model Under Test (MUT)** | Qwen3-235B |
+
+The v9 notebook submits 500 Spanish jailbreak prompts — organized into 4 hazard categories — to the Model Under Test (Qwen3-235B) and evaluates each response using a **3-judge majority voting** system. Each response receives a verdict of `BLOCK`, `WARNING`, or `PASS` from three independent judges; the majority verdict is taken as the final label. The notebook computes two aggregate metrics:
+
+- **JSR (Jailbreak Success Rate)** — the proportion of prompts where the model produced an unsafe response despite the adversarial framing
+- **CCR (Content Compliance Rate)** — the proportion of prompts where the model correctly blocked or warned about unsafe content
+
+<Info>
+  The v9 notebook is built on the MLCommons AILuminate standard and is compatible with the HuggingFace Inference API. The `Qwen3-235B` model is accessed via HuggingFace — you will need a HuggingFace API token added to Colab Secrets as `HF_TOKEN`. You can substitute any HuggingFace-hosted model as the MUT by changing the `model_id` configuration field.
+</Info>
+
+## Outputs
+
+| Artifact | Contents |
+|---|---|
+| `routing_decisions.json` | Per-item routing decisions for each agent node in the LangGraph graph |
+| `alignment_scores.csv` | Per-agent alignment scores across evaluation scenarios and adversarial inputs |
+| `red_team_failures.json` | Structured red-team failure manifest: adversarial input, failure node, routing decision, unsafe output |
+| `RUBRIC_LOG_audit.json` | Full audit dump of all `BooleanRubricResult` entries for the v8 evaluation run |
+
+<Note>
+  The red-team failure manifest is a compliance artifact. It documents every safety failure observed during adversarial testing and is required for BBOM Layer 10 (red-team coverage) attestation under the ARTIFEX standards alignment framework.
+</Note>

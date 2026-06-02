@@ -1,0 +1,94 @@
+---
+title: "ARTIFEX v7.2 Spanish Safety Benchmark for Colombia"
+sidebarTitle: "Spanish Benchmark"
+description: "Evaluate AI safety on 68 Colombian-context prompts with X-Value Radar charts, DIF detection, and a bias-corrected LLM-as-Judge for content validity."
+---
+
+The v7.2 Spanish Safety Benchmark notebook evaluates AI model safety responses against a curated set of 68 prompts drawn from Colombian cultural contexts. It is designed to answer a specific question: does a model's safety behavior remain consistent and culturally appropriate when evaluated against Latin American Spanish content, including Colombian idioms, social norms, and regional sensitivities? The notebook uses the **X-Value Consensus/Pluralism framework** for cross-lingual value alignment auditing, DIF (Differential Item Functioning) detection to surface prompt-level bias, and a bias-corrected LLM-as-Judge to produce calibrated safety verdicts. Its primary validity target is **content validity** — verifying that the benchmark's item set comprehensively and representatively covers the cultural and linguistic domain it claims to measure.
+
+## Open in Colab
+
+Click the link below to open the notebook directly in Google Colab:
+
+**[https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/ARTIFEX_v7.2_Spanish_Benchmark.ipynb](https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/ARTIFEX_v7.2_Spanish_Benchmark.ipynb)**
+
+| Property | Value |
+|---|---|
+| **Version** | v7.2 |
+| **Validity Facet** | Content validity |
+| **Benchmark Size** | 68 prompts (Colombian context) |
+| **Dataset** | `dialect_dataset.json` — 200-pair Castilian/Mexican Spanish parallel corpus |
+| **Standards** | NIST AI 800-3 · MLCommons AILuminate |
+
+## What This Notebook Does
+
+The v7.2 notebook runs 68 Colombian-context safety prompts through the full ARTIFEX pipeline and produces three classes of output: per-prompt safety labels from the bias-corrected LLM-as-Judge, DIF scores that flag which prompts behave differently across dialect groups, and X-Value radar visualizations that show where a model's outputs cluster on the Consensus/Pluralism spectrum. Together these outputs let you audit not just whether a model passes or fails individual safety checks, but whether its safety behavior is culturally coherent and consistent across the Colombian Spanish domain.
+
+<Note>
+  The 68 Colombian-context prompts are loaded from `dialect_dataset.json`, a 200-pair Castilian/Mexican Spanish parallel corpus (~102 KB). The notebook uses the Colombian Spanish subset for content validity evaluation. See the [Dialect Divergence notebook](/notebooks/dialect-divergence) for the full cross-dialect comparative analysis.
+</Note>
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="X-Value Consensus/Pluralism Framework" icon="radar">
+    The X-Value framework (Alibaba/ZJU, arXiv:2602.17283) audits cross-lingual value alignment by positioning each model output on a **Consensus/Pluralism spectrum** — measuring whether the model defaults to a culturally dominant value position (consensus) or acknowledges culturally specific variation (pluralism). Results are visualized as radar charts across value dimensions.
+  </Card>
+  <Card title="DIF Detection" icon="magnifying-glass-chart">
+    **Differential Item Functioning (DIF)** analysis identifies prompts that behave differently for different cultural or dialect subgroups. A high DIF score on a prompt means the model's safety response depends more on the dialect framing than on the underlying hazard content — a signal of measurement bias rather than genuine safety variation.
+  </Card>
+  <Card title="Bias-Corrected LLM-as-Judge" icon="scale-balanced">
+    The LLM-as-Judge applies the same bias-corrected θ̂ estimator used in the Core Swarm: position bias correction, verbosity bias correction, and structured Pydantic output parsing. Every verdict is traceable to a specific rubric gate and confidence score.
+  </Card>
+  <Card title="BBOM Supply-Chain Audit" icon="shield-check">
+    The notebook runs the full 11-gate `BooleanRubricResult` pipeline and appends a BBOM Layer 1–10 compliance manifest to the audit log, documenting system configuration, judge identity, evaluation scope, and execution timestamp.
+  </Card>
+</CardGroup>
+
+## The X-Value Framework Explained
+
+The X-Value Cross-Lingual Values framework, developed by Alibaba and Zhejiang University (arXiv:2602.17283), provides a structured method for auditing whether AI model outputs respect culturally specific value systems or impose a dominant Western-default perspective. In the v7.2 notebook, it operates as follows:
+
+1. **Consensus detection** — the notebook checks whether a model's safety refusal or permission is consistent with the majority position across all tested cultures for a given hazard type.
+2. **Pluralism detection** — the notebook flags outputs that differ from the cross-cultural consensus, surfacing them as potential value alignment mismatches that warrant human review.
+3. **Radar visualization** — X-Value scores are rendered as multi-axis radar charts, one per hazard category, allowing you to see at a glance which safety dimensions show high consensus (tight chart) and which show pluralism (expanded chart).
+
+<Tip>
+  High pluralism scores in a specific hazard category are not automatically a failure — they may indicate that the model is correctly responding to genuine cultural variation in that hazard's interpretation. Use the DIF scores alongside the X-Value radar to distinguish legitimate cultural sensitivity from measurement bias.
+</Tip>
+
+## Step-by-Step Walkthrough
+
+<Steps>
+  <Step title="Open the notebook in Colab">
+    Click the Colab link above. The notebook loads with the Colombian-context prompt set pre-configured.
+  </Step>
+  <Step title="Verify the dataset path">
+    In the configuration cell, confirm that `dialect_dataset.json` is accessible. The notebook expects this file in the working directory. You can upload it directly from the repository or mount Google Drive.
+  </Step>
+  <Step title="Add API keys (optional)">
+    Add `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` to Colab Secrets for LLM-as-Judge verdicts. Without keys, the notebook uses extractive summarization for the judge step.
+  </Step>
+  <Step title="Run all cells">
+    Select **Runtime → Run all**. The pipeline processes all 68 prompts, computes DIF scores, runs the X-Value audit, and generates radar chart visualizations.
+  </Step>
+  <Step title="Supply your own prompts (optional)">
+    To evaluate a custom Colombian Spanish prompt set, replace the `benchmark_prompts` list in the configuration cell with your own JSONL-formatted prompt records. Each record must include `id`, `prompt_local`, `culture` (set to a Colombian context), `language` (`es-CO`), and `hazard_tag`.
+  </Step>
+  <Step title="Review outputs">
+    The notebook writes per-prompt safety labels, DIF scores, and X-Value radar charts to the Colab working directory. Check `dif_scores.json` for individual prompt DIF values and `xvalue_radar.html` for the interactive radar visualization.
+  </Step>
+</Steps>
+
+## Outputs
+
+| Artifact | Contents |
+|---|---|
+| `safety_labels.csv` | Per-prompt safety labels (`Safe`, `Borderline`, `Unsafe`), confidence scores, and judge verdicts |
+| `dif_scores.json` | Per-prompt DIF scores with flagged items that show dialect-dependent behavior |
+| `xvalue_radar.html` | Interactive X-Value Consensus/Pluralism radar chart per hazard category |
+| `RUBRIC_LOG_audit.json` | Full audit dump of all `BooleanRubricResult` entries for the 68-prompt evaluation run |
+
+<Info>
+  The `dialect_dataset.json` file used by this notebook is a 200-pair Castilian/Mexican Spanish parallel corpus with cultural sensitivity annotations (~102 KB). The v7.2 notebook uses the Colombian-context subset. The full 200-pair corpus is used in the [Dialect Divergence notebook](/notebooks/dialect-divergence) for comparative IRT-based analysis across both dialect groups.
+</Info>

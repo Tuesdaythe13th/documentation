@@ -1,0 +1,80 @@
+---
+title: "ARTIFEX Labs"
+description: "Multilingual compositional AI safety evaluation suite for benchmarking content-safety pipelines across languages, dialects, and cultural contexts."
+mode: custom
+---
+
+<div className="mx-auto flex w-full max-w-[720px] flex-col gap-12 px-4 py-10 lg:gap-14 lg:py-16">
+  <div className="flex flex-col items-center gap-6">
+    <div className="flex max-w-[480px] flex-col gap-2 text-center">
+      <h1 className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-50">
+        Evaluate AI safety across languages and cultures
+      </h1>
+      <p className="text-balance text-base text-gray-600 dark:text-gray-400">
+        ARTIFEX Labs provides a standards-aligned multilingual safety evaluation suite — from CLI tools and Colab notebooks to auditable Boolean rubrics and IRT-calibrated benchmarks. Use the tabs to navigate or search with <kbd>⌘</kbd> <kbd>K</kbd>.
+      </p>
+    </div>
+  </div>
+
+  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+    <a
+      href="/quickstart"
+      className="group flex flex-col outline-none"
+    >
+      <div
+        className="kb-feature-card relative flex h-[170px] items-center justify-center overflow-hidden rounded-2xl ring-1 ring-gray-100 transition group-hover:ring-gray-200 dark:ring-white/[0.08] dark:group-hover:ring-white/15 saturate-50 group-hover:saturate-100"
+      >
+        <div className="relative flex items-center justify-center">
+          <Icon icon="rocket" size={36} className="!bg-white" />
+        </div>
+      </div>
+      <div className="flex flex-col gap-1 pt-4">
+        <span className="text-base font-medium text-gray-900 dark:text-gray-50">Quick start</span>
+        <span className="text-sm leading-5 text-gray-600 dark:text-gray-400">
+          Run your first multilingual safety evaluation in minutes using the CLI or a Colab notebook.
+        </span>
+      </div>
+    </a>
+
+    <a
+      href="/notebooks/overview"
+      className="group flex flex-col outline-none"
+    >
+      <div
+        className="kb-feature-card relative flex h-[170px] items-center justify-center overflow-hidden rounded-2xl ring-1 ring-gray-100 transition group-hover:ring-gray-200 dark:ring-white/[0.08] dark:group-hover:ring-white/15 saturate-50 group-hover:saturate-100"
+      >
+        <div className="relative flex items-center justify-center">
+          <Icon icon="notebook" size={36} className="!bg-white" />
+        </div>
+      </div>
+      <div className="flex flex-col gap-1 pt-4">
+        <span className="text-base font-medium text-gray-900 dark:text-gray-50">Colab notebooks</span>
+        <span className="text-sm leading-5 text-gray-600 dark:text-gray-400">
+          Self-contained evaluation pipelines for Spanish benchmarks, dialect divergence, agentic alignment, and more.
+        </span>
+      </div>
+    </a>
+  </div>
+
+  <div className="flex flex-col gap-4">
+    <h2 className="text-lg font-medium tracking-tight text-gray-900 dark:text-gray-50">Resources</h2>
+
+    <Columns cols={2}>
+      <Card title="Core Concepts" icon="brain" iconType="light" href="/concepts/safety-evaluation">
+        Safety evaluation architecture, cultural taxonomy, Boolean rubrics, and measurement science.
+      </Card>
+      <Card title="Guides" icon="map" iconType="light" href="/guides/running-evaluations">
+        Step-by-step walkthroughs for running evaluations, ingesting data, and interpreting results.
+      </Card>
+    </Columns>
+
+    <Columns cols={2}>
+      <Card title="CLI Reference" icon="terminal" iconType="light" href="/reference/cli-flags">
+        Full flag reference for evaluator.py and ingest.py, with examples for GPU and CI environments.
+      </Card>
+      <Card title="Data Schema" icon="file-json" iconType="light" href="/reference/data-schema">
+        JSONL record schema, required fields, hazard tags, and output CSV column definitions.
+      </Card>
+    </Columns>
+  </div>
+</div>

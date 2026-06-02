@@ -1,0 +1,115 @@
+---
+title: "ARTIFEX v7.3: Castilian vs. Mexican Spanish Divergence"
+sidebarTitle: "Dialect Divergence"
+description: "Measure AI safety divergence between Castilian and Mexican Spanish using a 200-pair parallel corpus, IRT-based DIF analysis, and common-person IRT linking."
+---
+
+The v7.3 Dialect Divergence Benchmark notebook investigates a critical question in multilingual safety evaluation: does an AI model's safety behavior diverge between Castilian Spanish (spoken in Spain) and Mexican Spanish (spoken across Mexico and much of Latin America)? These are not simply accent differences — the two dialect groups carry distinct idioms, cultural references, regional taboos, and pragmatic norms that can cause the same prompt, translated faithfully between dialects, to receive materially different safety verdicts from a model. This notebook uses a 200-pair parallel corpus, IRT-based DIF analysis, and common-person IRT linking to measure that divergence precisely and quantify it in terms of **external validity**: whether the evaluation's findings generalize across the two dialect populations.
+
+## Open in Colab
+
+Click the link below to open the notebook directly in Google Colab:
+
+**[https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/ARTIFEX_v7.3_Dialect_Divergence.ipynb](https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/ARTIFEX_v7.3_Dialect_Divergence.ipynb)**
+
+| Property | Value |
+|---|---|
+| **Version** | v7.3 |
+| **Validity Facet** | External validity |
+| **Dataset** | `dialect_dataset.json` — 200-pair Castilian/Mexican Spanish parallel corpus (~102 KB) |
+| **Standards** | NIST AI 800-3 · ISO/IEC 42119-2/3 |
+
+## What This Notebook Does
+
+The v7.3 notebook loads the 200-pair Castilian/Mexican Spanish parallel corpus and submits both dialect versions of each prompt to the evaluation pipeline. It then applies IRT-based DIF analysis to identify which items produce systematically different safety verdicts across dialect groups — controlling for overall prompt difficulty — and uses common-person IRT linking to calibrate the two dialect measurement scales onto a single shared θ axis. The result is a set of DIF scores, per-sample IRT θ̂ estimates, and dialect divergence heatmaps that tell you exactly where and how much a model's safety behavior shifts between dialects.
+
+<Note>
+  The `dialect_dataset.json` file contains 200 prompt pairs, each available in both Castilian (`es-ES`) and Mexican Spanish (`es-MX`), with cultural sensitivity annotations. The same corpus is used by the [v7.2 Spanish Benchmark](/notebooks/spanish-benchmark) notebook for Colombian-context content validity evaluation.
+</Note>
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="200-Pair Parallel Corpus" icon="book">
+    The `dialect_dataset.json` corpus provides 200 matched prompt pairs — one Castilian Spanish version and one Mexican Spanish version of the same underlying hazard scenario. Parallel structure ensures that any divergence in safety verdicts is attributable to dialect framing, not prompt content differences.
+  </Card>
+  <Card title="IRT-Based DIF Analysis" icon="chart-line">
+    **Differential Item Functioning (DIF)** analysis uses the IRT 3PL model to identify items where the probability of a safe verdict differs between dialect groups after controlling for the latent safety trait θ. Items with significant DIF indicate that the model is responding to dialect-specific surface features rather than the underlying hazard.
+  </Card>
+  <Card title="Common-Person IRT Linking" icon="link">
+    **Common-person IRT linking** calibrates the Castilian and Mexican Spanish measurement scales onto a shared latent trait axis. This allows you to compare θ̂ estimates across dialects on an equal footing — a prerequisite for valid cross-dialect fairness analysis.
+  </Card>
+  <Card title="Dialect Divergence Heatmaps" icon="table-cells">
+    The notebook generates heatmaps that visualize DIF scores and θ̂ divergence across hazard categories and dialect pairs, making it easy to spot systematic patterns — for example, prompts in the `political` or `language_specific_taboo` categories that consistently diverge across dialects.
+  </Card>
+</CardGroup>
+
+## The IRT 3PL Model
+
+The notebook applies the IRT 3-Parameter Logistic (3PL) model to each item in the parallel corpus:
+
+```text
+P_i(θ) = c_i + (1 - c_i) / (1 + exp(-a_i * (θ - b_i)))
+
+where:
+  a_i = discrimination   (BBOM Layer 3 gate: a_i > 0 required)
+  b_i = difficulty       (stored per sample for cross-dialect comparison)
+  c_i = pseudo-guessing  (default 0.1 for 3-class safety)
+```
+
+Items with **negative discrimination** (a_i < 0) indicate annotation errors or systematic model inconsistency and trigger a hard BBOM Layer 9 failure gate. DIF is detected when `b_i` estimates differ significantly between dialect calibration runs for the same item.
+
+## Step-by-Step Walkthrough
+
+<Steps>
+  <Step title="Open the notebook in Colab">
+    Click the Colab link above. The notebook is pre-configured to load `dialect_dataset.json` from the repository.
+  </Step>
+  <Step title="Confirm the dataset">
+    Verify that `dialect_dataset.json` is available in the working directory. The notebook expects the full 200-pair corpus. You can upload it directly or mount Google Drive.
+  </Step>
+  <Step title="Add API keys (optional)">
+    Add `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` to Colab Secrets for LLM-as-Judge scoring. Without keys, the notebook uses cosine-similarity safety scoring via the offline embedding stub.
+  </Step>
+  <Step title="Run all cells">
+    Select **Runtime → Run all**. The pipeline evaluates all 200 prompt pairs in both dialects, fits the IRT 3PL model, runs DIF analysis, performs common-person linking, and generates heatmap visualizations.
+  </Step>
+  <Step title="Interpret DIF scores">
+    Review `dif_scores.json` for items flagged as DIF-positive. Each flagged item includes its DIF magnitude, the direction of divergence (Castilian-safe vs. Mexican-safe), and the hazard category. Use this list to prioritize human review of dialect-sensitive evaluation items.
+  </Step>
+  <Step title="Export dialect heatmaps">
+    The interactive heatmap is saved as `dialect_divergence_heatmap.html`. Share this file with stakeholders as a visual summary of cross-dialect safety divergence.
+  </Step>
+</Steps>
+
+## v7.5 English Cultural Alignment
+
+This page also covers the **v7.5 English Cultural Alignment** notebook, which applies the same IRT-based methodology to US, UK, and Australian English dialect variation.
+
+**Colab link:** [https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/ARTIFEX_v7.5_English_Cultural_Alignment.ipynb](https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/ARTIFEX_v7.5_English_Cultural_Alignment.ipynb)
+
+| Property | Value |
+|---|---|
+| **Version** | v7.5 |
+| **Validity Facet** | Criterion validity |
+| **Dataset** | `english_cultural_dataset.json` — 50-item US/UK/AU English dialect pairs |
+
+The v7.5 notebook evaluates how lexical differences (e.g., British vs. American spellings), idiomatic variation (phrases with different connotations across English dialects), and politeness register shifts affect model safety behavior across US, UK, and Australian English contexts. It uses the same `evaluate_classifications()` function and per-sample IRT θ̂ estimation as v7.3, providing a criterion-validity complement to the external-validity analysis in the Spanish dialect work.
+
+**Key features of v7.5:**
+- **50-item English dialect pair dataset** (`english_cultural_dataset.json`) covering lexical, idiomatic, and politeness variation across US/UK/AU English
+- **Per-sample IRT θ̂ metrics** for criterion validity — how well does the model's safety verdict correlate with human expert ground truth?
+- Same `BooleanRubricResult` audit infrastructure as v7.3, enabling direct cross-notebook comparability
+
+<Tip>
+  Run v7.3 and v7.5 together to compare Spanish dialect divergence with English dialect divergence. If you observe higher DIF rates in Spanish than in English, this may indicate that your model's training data under-represents Latin American Spanish relative to the dialects it handles well in English.
+</Tip>
+
+## Outputs
+
+| Artifact | Contents |
+|---|---|
+| `dif_scores.json` | Per-item DIF scores, divergence direction, and hazard category for all 200 prompt pairs |
+| `irt_theta_estimates.csv` | Per-sample IRT θ̂ for each dialect group, with common-person linked scale values |
+| `dialect_divergence_heatmap.html` | Interactive heatmap of DIF scores and θ̂ divergence across hazard categories |
+| `RUBRIC_LOG_audit.json` | Full audit dump of all `BooleanRubricResult` entries for the dialect divergence run |

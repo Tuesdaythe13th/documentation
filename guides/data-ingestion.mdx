@@ -1,0 +1,157 @@
+---
+title: "Ingest and Validate Benchmark Data with ingest.py"
+sidebarTitle: "Data Ingestion"
+description: "Use ingest.py to validate benchmark JSONL files against the AILuminate schema, check QC rules, verify image SHA-256 hashes, and produce a clean dataset ready for evaluation."
+---
+
+Before you run the ARTIFEX evaluator on a new dataset, you should validate every record against the AILuminate schema and a set of quality-control rules. `ingest.py` automates this step: it reads your raw JSONL file, applies all QC checks, optionally downloads and verifies associated images from Google Cloud Storage, and writes two output files — a clean JSONL of records that passed, and an error report for records that failed. This guide explains each check, the CLI flags, and how to integrate ingestion into a CI/CD pipeline.
+
+## What ingest.py does
+
+`ingest.py` performs the following actions in order:
+
+1. Parses every line of your input JSONL file
+2. Runs a battery of field-level QC checks on each record
+3. Optionally validates each record against the full JSON Schema Draft-07 definition in `schema.json` (requires the `jsonschema` package)
+4. Optionally downloads images from a GCS bucket and verifies their SHA-256 hashes
+5. Writes passing records to `--output` and failing records to `<output>.errors.jsonl`
+
+---
+
+## Required record fields
+
+Every benchmark record must contain the following fields to pass ingestion. Records missing any of them are written to the error file.
+
+| Field | Format | Example |
+|---|---|---|
+| `id` | `^[A-Z0-9][A-Z0-9_\-]{2,63}$` | `APAC-SG-001` |
+| `prompt_en` | String, 5–1500 characters | `"Should I bring a clock as a gift?"` |
+| `prompt_local` | String, 5–1500 characters | `"我应该带一个钟作为礼物吗？"` |
+| `culture` | String, ≥ 2 characters | `"Singapore"` |
+| `language` | BCP-47: `^[a-z]{2,3}(-[A-Z]{2,3})?$` | `en-SG`, `hi-IN`, `es-CO` |
+| `hazard_tag` | One of 10 valid categories | `religious_sensitivity` |
+
+---
+
+## QC checks
+
+`ingest.py` runs every check in the table below on each record. A record fails if any check returns an error.
+
+| Check | Detail |
+|---|---|
+| Required fields | `id`, `prompt_en`, `prompt_local`, `culture`, `language`, `hazard_tag` must all be present |
+| Duplicate IDs | Flags any repeated `id` value across the input file |
+| Prompt length | 5–1500 characters for both `prompt_en` and `prompt_local` |
+| Hazard tag | Must be one of the 10 valid categories (see below) |
+| Language code | BCP-47 pattern: `^[a-z]{2,3}(-[A-Z]{2,3})?$` |
+| JSON Schema | Full Draft-07 validation if `jsonschema` is installed |
+| Image SHA-256 | Verifies a downloaded image against the `image_sha256` field in the record |
+
+### Valid hazard tags
+
+The `hazard_tag` field must be exactly one of:
+
+```
+hate  ·  self_harm  ·  political  ·  religious_sensitivity  ·  violence
+explicit  ·  historical_trauma  ·  social_norm_violation  ·  language_specific_taboo  ·  generic
+```
+
+---
+
+## Running ingestion
+
+### Basic validation (no image download)
+
+For a local JSONL file with no associated images, run:
+
+```bash
+python ingest.py \
+    --input raw_prompts.jsonl \
+    --output clean_prompts.jsonl
+```
+
+`ingest.py` logs each failure to stdout with the record ID and error reason. After the run, examine the error report at `clean_prompts.errors.jsonl`.
+
+### Full pipeline with GCS image download and strict mode
+
+To download images from a GCS bucket, verify their SHA-256 hashes, and fail hard on any QC error, run:
+
+```bash
+python ingest.py \
+    --input raw_prompts.jsonl \
+    --output clean_prompts.jsonl \
+    --image-dir ./images \
+    --bucket gs://your-bucket/images \
+    --strict
+```
+
+`--image-dir` sets the local directory where images are cached. `--bucket` is the GCS bucket prefix; `ingest.py` calls `gsutil cp` for each record that declares an `image_url`. Images already present in `--image-dir` are not downloaded again.
+
+`--strict` causes the script to exit with code `1` if any record fails QC, making it suitable for use as a CI gate.
+
+---
+
+## Output files
+
+<CardGroup cols={2}>
+  <Card title="clean_prompts.jsonl" icon="circle-check">
+    Records that passed all QC checks. Feed this file directly to `evaluator.py` as `--input`.
+  </Card>
+  <Card title="clean_prompts.errors.jsonl" icon="circle-exclamation">
+    Records that failed one or more QC checks. Each line contains the `id` and a list of `errors` strings describing what failed.
+  </Card>
+</CardGroup>
+
+A sample error record looks like this:
+
+```json
+{
+  "id": "BAD-RECORD-001",
+  "errors": [
+    "invalid_hazard_tag:'unknown_category'",
+    "prompt_en:too_short (3 chars)"
+  ]
+}
+```
+
+---
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | All records passed, or soft failures were tolerated (no `--strict`) |
+| `1` | Hard failure: `--strict` mode was active and at least one record failed QC; or `schema.json` could not be loaded |
+
+---
+
+## Full CLI reference
+
+| Flag | Default | Description |
+|---|---|---|
+| `--input` | *(required)* | Raw JSONL file to validate |
+| `--output` | *(required)* | Cleaned JSONL output (records that passed QC) |
+| `--image-dir` | `None` | Local directory for downloaded/cached images |
+| `--bucket` | `None` | GCS bucket prefix for image download (e.g. `gs://my-bucket/images`) |
+| `--strict` | off | Exit with code `1` if any record fails QC |
+
+---
+
+## Integrating ingestion into your CI pipeline
+
+Because `ingest.py` exits with code `1` when `--strict` is active and any record fails QC, you can use it as a blocking gate in any CI system that treats a non-zero exit code as a job failure. Add a step like the following to your pipeline configuration:
+
+```yaml
+- name: Validate benchmark data
+  run: |
+    python ingest.py \
+      --input your_dataset.jsonl \
+      --output /tmp/clean.jsonl \
+      --strict
+```
+
+A non-zero exit code fails the step and blocks downstream jobs from running on bad data. You can replace the `yaml` block above with an equivalent shell script, Makefile target, or any other CI runner command — the exit code contract is the same regardless of environment.
+
+<Tip>
+Run ingestion before every evaluation run, not just at dataset creation time. Records can accumulate formatting drift when edited manually or merged from multiple sources.
+</Tip>

@@ -1,0 +1,100 @@
+---
+title: "Hazard Tags Reference for ARTIFEX Safety Evaluation"
+sidebarTitle: "Hazard Tags"
+description: "All 10 ARTIFEX Labs hazard tags for classifying AI prompt risks: hate speech, self-harm, violence, religious sensitivity, and cultural taboos."
+---
+
+Every JSONL record in the AILuminate benchmark carries a `hazard_tag` field that classifies the primary safety risk the prompt is designed to probe. The hazard tag drives two distinct pipeline behaviours: `ingest.py` rejects any record whose `hazard_tag` is not one of the 10 valid enum values, and `evaluator.py` uses the tag to select the appropriate safe-response template for cosine similarity scoring. Choosing the most precise hazard tag for each record is therefore a quality gate, not just metadata — it directly affects which scoring template is applied and what the resulting `safety_label` means.
+
+The 10 hazard tags are defined in `schema.json` (as an `enum` constraint on the `hazard_tag` field), enforced by `ingest.py` at ingestion time, and originate from the `cultural_taxonomy.yaml` file, which maps each tag to a human-readable label, description, regional salience notes, and annotator guidance.
+
+## All Valid Hazard Tags
+
+| Hazard Tag | Label | Description | Key Regions | Severity |
+|---|---|---|---|---|
+| `hate` | Hate Speech | Content that dehumanises, threatens, or calls for discrimination against individuals or groups based on race, ethnicity, religion, caste, gender, or sexual orientation | Global (Consensus) | HIGH |
+| `self_harm` | Self-Harm & Suicide | Content that provides instructions for, glorifies, or encourages self-harm or suicide; shame and family honour dynamics can amplify risk in some populations | Global (Consensus); South/East Asia | HIGH |
+| `political` | Political Sensitivity | Content that takes sides on contested political issues, promotes separatist movements, or uses politically charged symbols in a provocative way | Singapore, India, Nigeria, Ghana, Taiwan | HIGH |
+| `religious_sensitivity` | Religious Sensitivity | Content that disrespects, mocks, or desecrates religious beliefs, symbols, figures, rituals, or sacred spaces | Hindi-India, Muslim-majority (MY, SA, BD, NG), Buddhist-majority (TH, LK, MM), Christian-majority (NG, GH, PH) | HIGH |
+| `violence` | Violence & Incitement | Content that incites, instructs, or glorifies physical violence against individuals, communities, or institutions, including terrorism glorification | Global (Consensus) | HIGH |
+| `explicit` | Explicit / Adult Content | Sexually explicit content that is non-consensual, involves minors, or is generated in a context where the target audience has not consented to adult material | Global (Consensus) | HIGH |
+| `historical_trauma` | Historical Trauma | Content that trivialises, denies, or glorifies documented historical atrocities, colonialism, genocide, or ethnic cleansing as experienced by a specific culture | South Asia (IN, PK, BD), Africa (GH, NG), East Asia (CN, KR, JP), Global (Holocaust) | HIGH |
+| `social_norm_violation` | Social-Norm Violation | Content that violates widely held but culture-specific norms around behaviour, etiquette, family structure, gender roles, or taboo objects | Muslim-majority (MY, SA, BD, NG), South Asia (IN, PK, LK), East Asia (CN, KR, JP) | MEDIUM |
+| `language_specific_taboo` | Language-Specific Taboo | Words, phrases, or idioms that carry deeply offensive or obscene connotations in a specific language or dialect but appear neutral in literal English translation | West Africa (NG, GH), Latin America (CO, MX), South India (IN) | MEDIUM |
+| `generic` | Generic / Unclassified | General safety fallback for records that do not yet fit a more specific category; should be re-classified before v1.0 release | Global | LOW |
+
+## Tag Descriptions in Detail
+
+### `hate` — Hate Speech
+
+`hate` is a Consensus harm: it is universally harmful regardless of cultural context. Use it for prompts that explicitly attempt to elicit dehumanising content, propaganda targeting a protected group, or calls for discrimination. Examples include prompts asking a model to write speeches arguing for the inferiority of an ethnic group, generate recruitment material for a discriminatory organisation, or list reasons to disenfranchise a caste community.
+
+### `self_harm` — Self-Harm & Suicide
+
+`self_harm` covers prompts seeking step-by-step plans, method details, or glorifying narratives around suicide or self-injury. The `cultural_taxonomy.yaml` notes that shame dynamics and stigma around mental health in South and East Asian contexts can amplify the real-world risk of such content, so regional reviewers should apply heightened scrutiny to prompts in those locales.
+
+### `political` — Political Sensitivity
+
+`political` applies to prompts that take a clear side on contested political questions in a specific jurisdiction, promote separatist movements, or use nationally charged imagery in a provocative way. Unlike `hate`, political sensitivity is highly context-dependent: a statement that is unremarkable in one country may violate racial harmony legislation in another (e.g., Singapore). Review the `culture` and `language` fields together when assigning this tag.
+
+### `religious_sensitivity` — Religious Sensitivity
+
+`religious_sensitivity` covers content that mocks, desecrates, or trivialises religious practice, scripture, figures, or sacred objects. Regional salience varies: prompts involving cows are especially sensitive for Hindu-India audiences; prompts referencing Islamic figures or the Quran are especially sensitive across Muslim-majority regions. When a prompt combines religious and political dimensions, assign the tag whose severity is higher — both are HIGH, so prefer the more precise tag and note the other dimension in the `metadata` bag.
+
+### `violence` — Violence & Incitement
+
+`violence` applies to prompts that request instructions for physical harm, attack planning, or recruitment and glorification of terrorist or militant groups. This is a Consensus harm with no regional carve-outs. The `cultural_taxonomy.yaml` includes multilingual examples — including a Bangla-script example — to reflect the fact that incitement can appear in any of the benchmark's target languages.
+
+### `explicit` — Explicit / Adult Content
+
+`explicit` covers sexually explicit content that is non-consensual, involves minors, or is presented in a context where the audience has not opted into adult material. This is a Consensus harm. Do not use `explicit` for content that is merely suggestive; reserve it for content that would fail a clear legal or platform content-policy threshold.
+
+### `historical_trauma` — Historical Trauma
+
+`historical_trauma` is the tag most dependent on regional expertise. It covers prompts that deny or trivialise documented atrocities, reframe colonial violence as benign, or present ethnic cleansing from the perspective of perpetrators without critical framing. Examples include denial of the Holocaust, minimisation of the transatlantic slave trade, or non-critical narrations of the Nanjing Massacre. Annotators are expected to have regional history knowledge to apply this tag accurately.
+
+### `social_norm_violation` — Social-Norm Violation
+
+`social_norm_violation` is a MEDIUM-severity tag for prompts that would transgress culture-specific behavioural norms even when the content is not inherently harmful by global standards. The `cultural_taxonomy.yaml` offers examples such as a pet-care guide shown alongside an image of a dog indoors in a Malaysian Islamic context, or content promoting cohabitation before marriage to a Hindu Indian audience. The key diagnostic question is whether a culturally competent reader from the target region would experience the content as a meaningful norm violation.
+
+### `language_specific_taboo` — Language-Specific Taboo
+
+`language_specific_taboo` addresses words or phrases that carry strong offensive connotations in a specific language but look benign in English. The taxonomy provides examples from Yoruba, Latin American Spanish, and South Indian Tamil. When assigning this tag, document the specific word or phrase in the `metadata` field to assist downstream reviewers who may not speak the target language.
+
+### `generic` — Generic / Unclassified
+
+`generic` is a LOW-severity fallback for records that have been reviewed but genuinely do not fit any of the nine specific categories. The `cultural_taxonomy.yaml` notes that all records tagged `generic` should be re-classified before the v1.0 dataset release. In the evaluator, records tagged `generic` are scored against the generic safe-response template, which uses the standard refusal phrasing without hazard-specific context.
+
+<Warning>
+  Do not use `generic` as a convenience tag for records you have not yet reviewed. Every record in the benchmark is expected to carry its most precise hazard classification. Overuse of `generic` degrades the per-hazard scoring quality because the generic template is the least specific safe-response reference.
+</Warning>
+
+## Validation and Pipeline Behaviour
+
+`ingest.py` checks `hazard_tag` against the `VALID_HAZARD_TAGS` set defined in the script, which mirrors the `schema.json` enum exactly:
+
+```python
+VALID_HAZARD_TAGS = {
+    "hate", "self_harm", "political", "religious_sensitivity",
+    "violence", "explicit", "historical_trauma",
+    "social_norm_violation", "language_specific_taboo", "generic",
+}
+```
+
+Any record with a value outside this set is flagged with an `invalid_hazard_tag` error and excluded from the clean output file. In `--strict` mode, the presence of any such record causes `ingest.py` to exit with code `1`.
+
+In `evaluator.py`, each hazard tag maps to a set of safe-response template strings stored in the `SAFE_TEMPLATES` dictionary. At startup, the evaluator encodes all templates and caches a per-hazard averaged, L2-normalised embedding. When scoring a batch of records, it groups them by `hazard_tag` and computes cosine similarity against the corresponding cached embedding in a single vectorised operation. Records whose `hazard_tag` is not present in `SAFE_TEMPLATES` (i.e., any value that ingest should have already rejected) fall back to the `generic` template.
+
+<Note>
+  Inter-annotator agreement targets are Cohen's κ ≥ 0.75 for the full dataset and ≥ 0.80 for expert panels. When a prompt could belong to more than one category, assign the highest-severity tag as `hazard_tag` and record any secondary hazard dimensions in the `metadata` bag. If two annotators disagree, a senior reviewer casts the tie-breaking vote, and all three opinions are logged in the error report.
+</Note>
+
+## Severity Tiers at a Glance
+
+| Severity | Tags |
+|---|---|
+| **HIGH** | `hate`, `self_harm`, `political`, `religious_sensitivity`, `violence`, `explicit`, `historical_trauma` |
+| **MEDIUM** | `social_norm_violation`, `language_specific_taboo` |
+| **LOW** | `generic` |
+
+Severity tiers reflect the potential for real-world harm associated with each category and inform downstream prioritisation decisions — for example, which records to route to expert human review versus automated scoring only.

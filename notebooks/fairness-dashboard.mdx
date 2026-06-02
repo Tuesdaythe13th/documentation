@@ -1,0 +1,110 @@
+---
+title: "ARTIFEX Cohort Fairness and Failure Cluster Dashboard"
+sidebarTitle: "Fairness Dashboard"
+description: "Analyze per-language micro_f1 gaps and cluster failure cases from any ARTIFEX evaluation run using 3D visualizations and a structured failure manifest."
+---
+
+The ARTIFEX Fairness Dashboard notebook takes the output of any previous evaluation run and asks a second-order question: is the model's safety performance equitable across languages, dialects, and cultural cohorts? Individual prompt-level safety labels tell you whether a specific response is safe or unsafe. Cohort-level fairness analysis tells you whether the model is systematically safer — or systematically less safe — for one language group than another, and whether the failures cluster in ways that reveal structural bias. This notebook loads `results/*_metrics.json` files, computes per-language `micro_f1` gap statistics, maps failures to a structured cluster manifest, and renders 3D fairness visualizations for each benchmark. Its primary validity target is **external validity**: verifying that the evaluation's findings generalize equitably across the language populations the model is intended to serve.
+
+## Open in Colab
+
+Click the link below to open the notebook directly in Google Colab:
+
+**[https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/fairness_failure_dashboard.ipynb](https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/fairness_failure_dashboard.ipynb)**
+
+| Property | Value |
+|---|---|
+| **Validity Facet** | External validity |
+| **Input Format** | `results/*_metrics.json` files from any ARTIFEX evaluation run |
+| **Standards** | NIST AI 800-3 · ISO/IEC 42119-2/3 |
+
+## What This Notebook Does
+
+The Fairness Dashboard notebook reads structured metrics files produced by any ARTIFEX evaluation run (Core Swarm, Spanish Benchmark, Dialect Divergence, or Agentic Alignment) and computes cohort-level fairness statistics. It identifies language groups where the model's `micro_f1` score falls below the overall average by a configurable threshold — surfacing systemic performance gaps. It then clusters the failure cases using HDBSCAN and maps them to a structured `failure_cluster_manifest.json`, categorizing failures by hazard type, language group, and failure mode. Finally, it generates 3D fairness visualizations — one per benchmark — that let you see the full distribution of per-language performance in a spatial layout that makes outlier language groups immediately visible.
+
+<Note>
+  The Fairness Dashboard is designed to be run **after** at least one evaluation notebook (Core Swarm, Spanish Benchmark, Dialect Divergence, or Agentic Alignment). It reads the metrics files those notebooks produce. If you have not yet run an evaluation notebook, start with the [Core Swarm](/notebooks/core-swarm) notebook first.
+</Note>
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Per-Language micro_f1 Gap Analysis" icon="chart-bar">
+    The notebook computes `micro_f1` scores for each language group in your evaluation results and identifies gaps relative to the cross-language mean. Language groups with `micro_f1` below the configurable fairness threshold are flagged as **disparate impact** candidates and highlighted in the output visualizations.
+  </Card>
+  <Card title="Structured Failure Cluster Manifest" icon="list-check">
+    The notebook clusters failure cases using HDBSCAN and produces a structured `failure_cluster_manifest.json`. Each cluster entry includes: the cluster ID, the dominant hazard category, the language groups most represented in the cluster, a representative failure example, and a severity rating. This manifest is the primary artifact for fairness audit documentation.
+  </Card>
+  <Card title="3D Fairness Visualizations" icon="cube">
+    For each benchmark loaded into the dashboard, the notebook renders a **3D fairness visualization** — a spatial plot where each point represents a language group, positioned by its `micro_f1` score, failure rate, and DIF score. Language groups that are outliers on multiple dimensions are immediately visible as isolated points in the 3D space.
+  </Card>
+  <Card title="Cross-Benchmark Comparability" icon="arrows-left-right">
+    Because the Fairness Dashboard reads standardized `*_metrics.json` files, you can load results from multiple evaluation notebooks side by side and compare fairness profiles across benchmarks — for example, comparing Spanish dialect fairness (v7.3) with English dialect fairness (v7.5) in a single dashboard view.
+  </Card>
+</CardGroup>
+
+## How to Feed Your Evaluation Results into the Dashboard
+
+<Steps>
+  <Step title="Run an evaluation notebook">
+    Complete at least one evaluation run using any of the ARTIFEX evaluation notebooks (Core Swarm, Spanish Benchmark, Dialect Divergence, or Agentic Alignment). Each notebook writes a `*_metrics.json` file to the Colab working directory upon completion.
+  </Step>
+  <Step title="Download the metrics files">
+    Download the `*_metrics.json` files from the evaluation notebook's working directory. If you used Google Drive mounting, they will already be accessible to the Fairness Dashboard notebook if you use the same Drive mount.
+  </Step>
+  <Step title="Open the Fairness Dashboard">
+    Click the Colab link above to open the Fairness Dashboard notebook in a new Colab session.
+  </Step>
+  <Step title="Upload or mount your results">
+    Upload your `*_metrics.json` files to the Fairness Dashboard's working directory, or mount the same Google Drive folder where the evaluation notebooks wrote their output. The dashboard scans the `results/` directory for all `*_metrics.json` files automatically.
+  </Step>
+  <Step title="Configure the fairness threshold">
+    In the configuration cell, set `FAIRNESS_THRESHOLD` — the maximum acceptable `micro_f1` gap between any language group and the cross-language mean. The default value is `0.05` (5 percentage points). Language groups with larger gaps are flagged in the output.
+  </Step>
+  <Step title="Run all cells">
+    Select **Runtime → Run all**. The notebook loads all metrics files, computes per-language `micro_f1` gaps, clusters failures, generates the `failure_cluster_manifest.json`, and renders 3D fairness visualizations for each benchmark.
+  </Step>
+  <Step title="Export the failure manifest">
+    Download `failure_cluster_manifest.json` from the working directory. This file is your primary fairness audit artifact — it documents every failure cluster, its language group composition, and its hazard category breakdown.
+  </Step>
+</Steps>
+
+<Tip>
+  If you are running regular evaluation cycles (e.g., evaluating a model after each fine-tuning iteration), you can accumulate `*_metrics.json` files across runs and load them all into the Fairness Dashboard at once. The dashboard's cross-benchmark comparability feature will show you how fairness metrics evolve across runs, making it a useful tool for tracking the impact of safety fine-tuning on cross-language equity.
+</Tip>
+
+## Understanding the Failure Cluster Manifest
+
+The `failure_cluster_manifest.json` file uses a structured format that captures each failure cluster's key properties:
+
+```json
+{
+  "cluster_id": "C-042",
+  "dominant_hazard": "language_specific_taboo",
+  "language_groups": ["es-MX", "es-CO"],
+  "failure_count": 14,
+  "micro_f1_gap": 0.12,
+  "severity": "HIGH",
+  "representative_example": {
+    "prompt_id": "MX-0087",
+    "prompt_local": "...",
+    "model_verdict": "Safe",
+    "ground_truth": "Unsafe"
+  }
+}
+```
+
+Each cluster corresponds to a group of failure cases that are semantically similar (high HDBSCAN soft membership) and share a dominant hazard category and language group pattern. Clusters with high `micro_f1_gap` and `severity: HIGH` are the highest-priority items for human review and model correction.
+
+<Info>
+  The `failure_cluster_manifest.json` produced by the Fairness Dashboard is the same file format used across the ARTIFEX suite — the `failure_cluster_manifest.json` in the repository root was generated by a previous evaluation run and can be used as a reference for the expected output structure.
+</Info>
+
+## Output Artifacts
+
+| Artifact | Contents |
+|---|---|
+| `failure_cluster_manifest.json` | Structured failure cluster manifest: cluster ID, dominant hazard, language groups, failure count, micro_f1 gap, severity, representative example |
+| `fairness_gaps.csv` | Per-language `micro_f1` gap statistics and disparate impact flags for each loaded benchmark |
+| `fairness_<benchmark>_3d.png` | 3D fairness visualization per benchmark (one file per `*_metrics.json` loaded) |
+| `dashboard_summary.html` | Interactive HTML summary of all fairness metrics, cluster manifests, and visualizations |

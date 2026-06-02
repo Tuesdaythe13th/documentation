@@ -1,0 +1,93 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "sequoia",
+  "name": "ARTIFEX Labs",
+  "description": "Multilingual compositional AI safety evaluation — documentation for evaluators, benchmark designers, and safety engineers.",
+  "colors": {
+    "primary": "#bd8236",
+    "light": "#dad2cb",
+    "dark": "#fbab04"
+  },
+  "favicon": "https://media.brand.dev/e8fea91e-7881-47ed-92cf-9c88e3d555ed.png",
+  "icons": {
+    "library": "lucide"
+  },
+  "metadata": {
+    "timestamp": true
+  },
+  "contextual": {
+    "options": ["copy", "view", "assistant"]
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/safety-evaluation",
+              "concepts/cultural-taxonomy",
+              "concepts/boolean-rubrics",
+              "concepts/measurement-science"
+            ]
+          },
+          {
+            "group": "Notebooks",
+            "pages": [
+              "notebooks/overview",
+              "notebooks/core-swarm",
+              "notebooks/spanish-benchmark",
+              "notebooks/dialect-divergence",
+              "notebooks/agentic-alignment",
+              "notebooks/fairness-dashboard"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/running-evaluations",
+              "guides/data-ingestion",
+              "guides/annotation",
+              "guides/interpreting-results"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/data-schema",
+              "reference/hazard-tags",
+              "reference/cli-flags",
+              "reference/standards-alignment"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "HuggingFace",
+        "href": "https://huggingface.co/222tuesday"
+      }
+    ],
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/Tuesdaythe13th/multilingualcompositionalsafety_evals"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/Tuesdaythe13th/multilingualcompositionalsafety_evals"
+    }
+  }
+}

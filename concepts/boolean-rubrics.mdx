@@ -1,0 +1,161 @@
+---
+title: "ARTIFEX Boolean Rubrics: 11 Auditable Pipeline Gates"
+sidebarTitle: "Boolean Rubrics"
+description: "ARTIFEX's 11 Boolean rubric gates make every pipeline decision auditable: each gate records severity, confidence, reason, and routing in RUBRIC_LOG."
+---
+
+ARTIFEX replaces opaque single-score evaluation with **adaptive Boolean rubrics** — small sets of atomic, machine-checkable yes/no criteria applied at every decision point in the safety pipeline. Each rubric produces a structured `BooleanRubricResult` that is appended to the `RUBRIC_LOG` and audited in the final notebook cell. The result is a complete, reproducible record of every gate decision across all 11 pipeline layers: which gates passed, which failed, why each failed, and where the item was routed as a consequence.
+
+## Why Boolean Rubrics Replace Opaque Scoring
+
+Traditional safety evaluation collapses all signal into a single continuous score. That score is easy to report but hard to debug: when a model fails, you know it failed but not which aspect of the safety requirement it violated. Boolean rubrics decompose each pipeline decision into the smallest testable unit — a property that is either true or false — and make the basis for every routing outcome legible.
+
+The RUBRIC_DESIGN_HANDBOOK identifies four reasons why Boolean rubrics outperform opaque scoring in safety evaluation contexts:
+
+<CardGroup cols={2}>
+  <Card title="Atomicity" icon="atom">
+    Each rubric item tests exactly one thing. If a criterion contains "and," it should be split. Independent criteria can be graded independently and failed independently, giving you precise failure attribution.
+  </Card>
+  <Card title="Instruction Alignment" icon="arrow-right-to-bracket">
+    The rubric is written from the user instruction — not from candidate responses. This prevents post-hoc bias where the rubric accidentally encodes what the model did rather than what was required.
+  </Card>
+  <Card title="Must-Have Focus" icon="list-check">
+    The rubric targets non-negotiable task requirements. If a criterion fails and the task still counts as successful, that criterion does not belong in the must-have gate set. Every ARTIFEX pipeline gate is a must-have, not a quality enhancement.
+  </Card>
+  <Card title="Objectivity" icon="scale-balanced">
+    Two independent graders should reach the same verdict on each criterion with minimal interpretation. The closer a criterion is to a yes/no observation, the higher its inter-rater reliability.
+  </Card>
+</CardGroup>
+
+<Note>
+  RubricBench (arXiv:2603.01562) reports a persistent **Rubric Gap of approximately 26%** — human-authored rubrics substantially outperform model-generated ones. All ARTIFEX pipeline gates use human-authored rubric criteria.
+</Note>
+
+## The `BooleanRubricResult` Dataclass
+
+Every gate in the ARTIFEX pipeline returns a `BooleanRubricResult` instance. The dataclass captures the full decision context: not just the pass/fail verdict, but the confidence, severity level, human-readable reason, and the raw evidence values that drove the decision.
+
+```python
+@dataclass
+class BooleanRubricResult:
+    name: str           # machine-readable gate name (e.g. "jury_disagreement_high")
+    passed: bool        # routing decision: True = gate passed, False = fail → route
+    confidence: float   # 0.0–1.0 confidence in the gate decision
+    escalate: bool      # True if this result should escalate to human review
+    severity: str       # HIGH / MEDIUM / LOW / INFO
+    reason: str         # human-readable explanation of the decision
+    evidence: dict      # raw values that drove the decision (e.g. jury scores, similarity)
+```
+
+### Field Reference
+
+| Field | Type | Purpose |
+|---|---|---|
+| `name` | `str` | Machine-readable gate identifier — matches the gate names in the 11-gate table below |
+| `passed` | `bool` | `True` = item continues through the pipeline; `False` = item is routed to the fail destination |
+| `confidence` | `float` | Evaluator confidence in the decision; used for HITL prioritisation |
+| `escalate` | `bool` | Signals that even a `passed: True` result warrants human review due to low confidence or marginal evidence |
+| `severity` | `str` | One of `HIGH`, `MEDIUM`, `LOW`, or `INFO` — determines BBOM reporting tier |
+| `reason` | `str` | Plain-English explanation for auditors and annotators |
+| `evidence` | `dict` | Raw decision inputs — jury vote counts, cosine similarities, cluster stability scores, IRT parameters, and so on |
+
+## The `RUBRIC_LOG`
+
+Every `BooleanRubricResult` produced during an evaluation run is appended to the global `RUBRIC_LOG` list. After all items have been processed, the final notebook cell audits `RUBRIC_LOG` and exports it as part of the BBOM report.
+
+```python
+RUBRIC_LOG = []   # appended for every rubric across all 11 pipeline layers
+                  # audited in the final notebook cell and exported to bbom_report.json
+```
+
+You can query the log programmatically to produce per-gate pass rates, identify systematic failure patterns, or extract evidence dictionaries for a specific item:
+
+```python
+# Example: find all items where ontological_veto_triggered fired
+vetoed = [r for r in RUBRIC_LOG if r.name == "ontological_veto_triggered" and not r.passed]
+
+# Example: compute pass rate for jury_disagreement_high gate
+jury_gate = [r for r in RUBRIC_LOG if r.name == "jury_disagreement_high"]
+pass_rate  = sum(r.passed for r in jury_gate) / len(jury_gate)
+```
+
+## 11 Pipeline Rubric Gates
+
+The 11 gates span six functional categories: Dataset, Embedding, Clustering, Judge, Routing, and HITL. Each gate is evaluated in pipeline order. A gate failure appends a `passed: false` result to `RUBRIC_LOG` and routes the item to the destination in the **Fail Routes To** column — it does not necessarily abort the run.
+
+| Layer | Boolean Gate | Fail Routes To |
+|---|---|---|
+| Dataset | `dataset_size_sufficient` | `LOW_STAT_POWER` |
+| Dataset | `coverage_metadata_present` | `BBOM_L9_FAILED` |
+| Dataset | `dialect_validated` | `MEASUREMENT_RISK` |
+| Embedding | `embedding_ensemble_ready` | Single-mode encoding only |
+| Clustering | `soft_membership_available` | Hard-assignment clustering only |
+| Clustering | `cluster_stability_sufficient` | `UNSTABLE_TOPICS` |
+| Judge | `human_calibration_present` | No calibration claims made |
+| Judge | `judge_bias_correctable` | Human-only report |
+| Routing | `jury_disagreement_high` | `HITL` |
+| Routing | `ontological_veto_triggered` | Benchmark failure |
+| HITL | `active_learning_triplets_available` | No triplet query issued |
+
+### Gate Categories Explained
+
+<Accordion title="Dataset Gates (Layers 1–3)">
+  The three dataset gates validate the structural integrity of your benchmark before any model inference runs.
+
+  - **`dataset_size_sufficient`** — checks that your dataset has enough items to support the statistical claims you intend to make. Failure routes to `LOW_STAT_POWER`, which means evaluation can continue but NIST AI 800-3 power claims must be suppressed in the report.
+  - **`coverage_metadata_present`** — checks that every record has the coverage metadata fields required for BBOM Layer 9 compliance (`culture`, `language`, `hazard_tag`). Failure routes to `BBOM_L9_FAILED`, which is a hard compliance issue.
+  - **`dialect_validated`** — checks that dialect-pair records (for example, Castilian vs. Mexican Spanish) have been validated against the parallel corpus. Failure routes to `MEASUREMENT_RISK`, signalling that cross-dialect IRT comparisons cannot be fully trusted.
+</Accordion>
+
+<Accordion title="Embedding Gate (Layer 4)">
+  **`embedding_ensemble_ready`** — checks whether both members of the dual-encoder ensemble (RoBERTuito + multilingual-E5-Large) are available. If only one model is loadable, the pipeline falls back to single-mode encoding. Single-mode runs are still valid but carry reduced cross-lingual robustness and must be flagged in the BBOM report.
+</Accordion>
+
+<Accordion title="Clustering Gates (Layers 5–6)">
+  - **`soft_membership_available`** — checks that HDBSCAN was run with `prediction_data=True`, enabling soft cluster memberships for borderline items. Without soft memberships, items are hard-assigned to the nearest cluster, which increases label noise near cluster boundaries.
+  - **`cluster_stability_sufficient`** — checks that BERTopic topic coherence and cluster stability metrics clear the minimum threshold. Failure routes to `UNSTABLE_TOPICS`, disabling topic-level aggregation in the BBOM report.
+</Accordion>
+
+<Accordion title="Judge Gates (Layers 7–8)">
+  - **`human_calibration_present`** — checks that a calibration set of ≥ 30 human-labelled items exists for the judge. Without calibration, the pipeline cannot make claims about judge accuracy. Calibration is required to unlock bias-corrected θ̂ estimation.
+  - **`judge_bias_correctable`** — checks that the bias correction algorithm has sufficient signal (minimum calibration set size and variance) to produce a reliable corrected estimate. If not, the run falls back to an uncorrected human-only report.
+</Accordion>
+
+<Accordion title="Routing Gates (Layers 9–10)">
+  - **`jury_disagreement_high`** — checks whether jury vote entropy exceeds the disagreement threshold. When this gate fires (i.e., `passed: false` means disagreement IS high), the item is routed to HITL rather than receiving an automatic verdict. Note the inverted semantics: this gate *fires* to trigger escalation.
+  - **`ontological_veto_triggered`** — checks whether any juror issued a categorical veto. A veto means the item belongs to a harm category whose production is prohibited regardless of similarity score or majority vote. This is a hard benchmark failure and the item cannot receive a Safe or Unsafe label.
+</Accordion>
+
+<Accordion title="HITL Gate (Layer 11)">
+  **`active_learning_triplets_available`** — checks whether the system can construct a valid triplet (anchor, positive, negative response) for the borderline item. Triplet active learning extracts more information per annotation than binary labelling. If a valid triplet cannot be formed — for example, because the item pool is too small — the gate fails and no triplet query is issued. The item is still logged for manual review.
+</Accordion>
+
+## What Happens When a Gate Fails
+
+Gate failures are non-destructive by design. ARTIFEX routes items to a degraded-but-auditable state rather than dropping them silently. Every failure is stamped in `RUBRIC_LOG` with a `passed: false` entry, so your final BBOM report contains an honest account of which pipeline guarantees held and which were bypassed.
+
+<Steps>
+  <Step title="BooleanRubricResult logged">
+    The gate writes a `BooleanRubricResult` with `passed=False`, the appropriate `severity`, a `reason` string explaining the failure, and an `evidence` dict with the raw values that caused the failure.
+  </Step>
+  <Step title="Item routed to fail destination">
+    The item moves to the destination shown in the **Fail Routes To** column. For most gates this is a degraded pipeline mode. For `ontological_veto_triggered` it is a hard benchmark failure.
+  </Step>
+  <Step title="BBOM report flagged">
+    The BBOM audit cell reads `RUBRIC_LOG` and surfaces all `passed: false` entries with their severities. HIGH-severity failures block NIST AI 800-3 compliance claims. MEDIUM and LOW failures are recorded as warnings.
+  </Step>
+</Steps>
+
+## Four Principles from the RUBRIC_DESIGN_HANDBOOK
+
+The RUBRIC_DESIGN_HANDBOOK distils current state-of-the-art rubric engineering into four core principles that every ARTIFEX gate is designed to satisfy:
+
+| Principle | Test to Apply |
+|---|---|
+| **Atomicity** | Can you split this criterion into two independent checks? If yes, split it. |
+| **Instruction Alignment** | Does this criterion come from the pipeline requirement, not from observing what models actually output? |
+| **Must-Have Focus** | If this criterion fails and the safety claim still holds, remove the criterion from the must-have gate set. |
+| **Objectivity** | Can two independent reviewers reach the same verdict without additional interpretation? If not, make the criterion more concrete. |
+
+> *"A rubric should behave like a unit test for intent. If it mainly rewards outputs for looking polished, it is not a good rubric. If it makes task success legible, auditable, and resistant to superficial reward hacking, it is doing its job."*  
+> — ARTIFEX Labs Rubric Design Handbook v1.0

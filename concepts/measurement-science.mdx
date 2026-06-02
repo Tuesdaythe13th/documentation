@@ -1,0 +1,147 @@
+---
+title: "Measurement Science: IRT, GLMM, and Validity Facets"
+sidebarTitle: "Measurement Science"
+description: "ARTIFEX grounds every evaluation in measurement science: IRT 3PL item diagnostics, NIST AI 800-3 GLMM variance decomposition, and five validity facets."
+---
+
+ARTIFEX is built on the premise that AI safety evaluation is a measurement problem — not just a task-completion problem. Every notebook in the suite includes a dedicated **§ 2026 Measurement Science** cell that maps the evaluation methodology to formal psychometric and statistical frameworks. This page explains what those frameworks are, how they apply to AI safety benchmarking, and how each one maps to a specific ARTIFEX notebook or pipeline component.
+
+## From Task-Based Benchmarking to Measurement Science
+
+Traditional AI benchmarks ask: "Did the model get the right answer?" That question treats every item as equally informative, every annotator as equally calibrated, and every language as equally represented. None of those assumptions hold in multilingual safety evaluation.
+
+NIST AI 800-3 (2026) frames the shift this way:
+
+> *"The structural maturation of artificial intelligence as a field of scientific inquiry has necessitated a fundamental transition from simplistic task-based benchmarking to the comprehensive application of measurement science."*
+
+ARTIFEX operationalises that transition across three instruments: IRT 3PL item-level diagnostics, NIST AI 800-3 GLMM variance decomposition, and the five facets of validity. Together they let you answer not just "did the model fail?" but "which items are the most diagnostic, where does variance come from, and does the benchmark measure what it claims to measure?"
+
+## IRT 3PL Model — Item-Level Diagnostics
+
+Item Response Theory (IRT) treats each benchmark prompt as a measurement instrument with its own psychometric properties. The three-parameter logistic (3PL) model gives you three parameters per item that tell you how much diagnostic information it contributes, how hard it is, and how likely a low-ability model is to answer it correctly by chance.
+
+### The Formula
+
+$$P_i(\theta) = c_i + \frac{1 - c_i}{1 + \exp\!\left(-a_i \cdot (\theta - b_i)\right)}$$
+
+where:
+
+| Parameter | Symbol | Meaning in ARTIFEX |
+|---|---|---|
+| **Model ability** | θ (theta) | The latent safety-alignment level of the model under test; estimated per-sample via IRT calibration |
+| **Discrimination** | *a*ᵢ | How sharply the item separates high-ability from low-ability models. A higher *a*ᵢ means the item is a more precise diagnostic instrument |
+| **Difficulty** | *b*ᵢ | The ability level at which a model has a 50% chance of passing the item (adjusted for guessing). Stored as `sample.difficulty` in FiftyOne |
+| **Pseudo-guessing** | *c*ᵢ | The probability that a model at the lowest ability level answers correctly by chance. Default is `0.1` for three-class safety evaluation (Safe / Borderline / Unsafe) |
+
+### The Discrimination Gate
+
+The discrimination parameter *a*ᵢ is the most safety-critical IRT diagnostic. Items with **negative discrimination** — where lower-ability models answer correctly more often than higher-ability models — indicate annotation errors, prompt ambiguity, or template contamination. A negative *a*ᵢ is a hard failure in BBOM Layer 9.
+
+<Warning>
+  If your dataset contains items with *a*ᵢ < 0, the IRT discrimination check is a hard failure at BBOM Layer 9. Remove or re-annotate those items before running a compliance evaluation. Negative discrimination items must not appear in any dataset that makes NIST AI 800-3 accuracy claims.
+</Warning>
+
+Items with very low positive discrimination (*a*ᵢ ≈ 0) are not hard failures but are flagged as low-information items in the BBOM report. Consider replacing them with more discriminating prompts to improve benchmark efficiency.
+
+## NIST AI 800-3 GLMM Variance Decomposition
+
+Once you have item-level IRT parameters, the next question is: where does the variance in your evaluation scores come from? Is it the items themselves? Annotator disagreement? Dialect differences? Random noise? The NIST AI 800-3 Generalised Linear Mixed Model (GLMM) variance decomposition partitions total score variance into four components, each with a distinct interpretation and a distinct remediation path.
+
+### The Decomposition
+
+```text
+Total Variance
+  = Between-Item Variance    (difficulty bᵢ — how hard items are)
+  + Within-Item Variance     (jury disagreement rate per item)
+  + Cross-Lingual Variance   (DIF — dialect divergence score)
+  + Residual                 (annotation noise)
+```
+
+| Component | Source | ARTIFEX Instrument | Remediation |
+|---|---|---|---|
+| **Between-Item Variance** | Difficulty spread across prompts (*b*ᵢ distribution) | IRT 3PL *b*ᵢ parameter; `sample.difficulty` in FiftyOne | Re-calibrate item pool to cover a wider difficulty range |
+| **Within-Item Variance** | Jury disagreement rate — jurors disagree on the same item across runs | `jury_disagreement_high` rubric gate; `evidence.jury_votes` in `BooleanRubricResult` | Route high-disagreement items to HITL; collect more human labels |
+| **Cross-Lingual Variance** | Differential Item Functioning (DIF) — the same prompt behaves differently across dialects or languages | IRT-based DIF analysis in v7.3 (Dialect Divergence); common-person linking | Remove biased items; add dialect-stratified sampling |
+| **Residual** | Annotation noise — unexplained variance after partitioning | ICC(2,k) and Cohen's κ per annotation batch | Increase annotator calibration frequency; enforce 25-item batch limits |
+
+<Note>
+  NIST AI 800-3 distinguishes **benchmark accuracy** (performance on a specific item set) from **generalised accuracy** (performance on the underlying construct the benchmark is intended to measure). The GLMM decomposition is the primary tool for establishing whether your benchmark's accuracy estimates generalise beyond the specific prompt set you evaluated.
+</Note>
+
+## Five Facets of Validity
+
+Validity in measurement science is not a single property — it is a family of related claims about whether a measurement instrument measures what it purports to measure. ARTIFEX maps the five standard validity facets to specific notebooks and primary instruments, so every validity claim is grounded in a concrete evaluation artefact.
+
+| Validity Facet | What It Asks | ARTIFEX Notebook | Primary Instrument |
+|---|---|---|---|
+| **Content validity** | Does the benchmark cover the full domain it claims to test? | v7.2 Spanish Benchmark | `cultural_taxonomy.yaml` × BCP-47 language coverage |
+| **Construct validity** | Do the rubric gates measure the latent construct (safety alignment) rather than surface proxies? | v7.1 Core Swarm | `BooleanRubricResult` gates + BERTopic topic coherence |
+| **Criterion validity** | Do benchmark scores correlate with an established external criterion (IRT θ̂)? | v7.5 English Cultural Alignment | `evaluate_classifications()` + IRT θ̂ per sample |
+| **External validity** | Do results generalise across dialects, regions, and language varieties? | v7.3 Dialect Divergence | DIF analysis + common-person IRT linking |
+| **Consequential validity** | Do evaluation decisions produce fair and beneficial outcomes in practice? | v7.4 Ethical Feedback Loop + safety_routing | Time-horizon metric + feedback loop audit |
+
+### Validity Facet Details
+
+<Accordion title="Content Validity — v7.2 Spanish Benchmark">
+  Content validity asks whether your prompt set systematically samples from the domain you claim to evaluate. For a multilingual safety benchmark, that domain is defined by the 10-dimension cultural taxonomy crossed with the BCP-47 language coverage of your dataset. The v7.2 Spanish Benchmark uses a 68-prompt Colombian-context item set and validates coverage with X-Value Radar charts that show which taxonomy dimensions and language sub-tags are represented.
+
+  The `coverage_metadata_present` BBOM gate (Layer 2) operationalises content validity as a machine-checkable criterion: every record must carry a valid `hazard_tag`, `language`, and `culture` field.
+</Accordion>
+
+<Accordion title="Construct Validity — v7.1 Core Swarm">
+  Construct validity asks whether your measurement gates track the latent safety-alignment construct rather than surface-level proxies like response length or fluency. The v7.1 Core Swarm notebook establishes construct validity through two instruments: the 11 `BooleanRubricResult` gates (which test structural pipeline properties) and BERTopic topic coherence scores (which verify that the cluster structure reflects genuine semantic groupings rather than noise).
+
+  The `cluster_stability_sufficient` gate (Layer 6) is the primary construct validity gate: if topic clusters are unstable, the semantic structure underlying the benchmark does not hold, and construct validity claims must be suppressed.
+</Accordion>
+
+<Accordion title="Criterion Validity — v7.5 English Cultural Alignment">
+  Criterion validity asks whether your benchmark scores predict an accepted external criterion. ARTIFEX uses per-sample IRT θ̂ estimates as the criterion: a benchmark with good criterion validity should produce evaluation scores that correlate with model ability as estimated by IRT. The v7.5 English Cultural Alignment notebook runs `evaluate_classifications()` across US, UK, and Australian English dialect pairs and computes per-sample θ̂ to verify the correlation.
+</Accordion>
+
+<Accordion title="External Validity — v7.3 Dialect Divergence">
+  External validity asks whether your results generalise beyond the specific items and population you evaluated. The v7.3 Dialect Divergence notebook directly tests this using a 200-pair parallel corpus of Castilian vs. Mexican Spanish prompts. It applies IRT-based Differential Item Functioning (DIF) analysis to identify items where the same prompt behaves systematically differently across dialects — a sign that the item is measuring something language-specific rather than the latent safety construct.
+
+  Common-person IRT linking connects the Castilian and Mexican Spanish ability scales, enabling a principled comparison of model performance across the two dialect populations.
+</Accordion>
+
+<Accordion title="Consequential Validity — v7.4 + safety_routing">
+  Consequential validity asks whether the evaluation framework produces fair and beneficial real-world outcomes. This is the most demanding validity facet because it requires evidence from deployment, not just from the benchmark itself. ARTIFEX addresses it through two instruments: the time-horizon metric (which measures whether safety improvements persist over successive model versions) and the feedback loop audit (which traces how evaluation decisions propagate back into model training via the DPO dataset and fine-tuning pipeline).
+</Accordion>
+
+## Standards Alignment
+
+Every ARTIFEX evaluation notebook is designed to produce artefacts that satisfy the following standards. The table maps each standard to its specific ARTIFEX implementation.
+
+| Standard | Version | ARTIFEX Implementation |
+|---|---|---|
+| **NIST AI 800-3** | 2026 | GLMM variance decomposition; distinction between benchmark accuracy and generalised accuracy |
+| **ISO/IEC 42119-2** | October 2025 | Testing techniques applied across the AI development lifecycle (ingestion, embedding, clustering, judge, routing) |
+| **ISO/IEC 42119-3** | October 2025 | Verification and validation approaches — BBOM gates as V&V checkpoints |
+| **MLCommons AILuminate** | 2026 | Structured risk assurance; BBOM supply-chain audit; Spanish jailbreak benchmark (v7.2, v9) |
+| **BBOM (Benchmark Bill of Materials)** | Layer 1–10 | All 11 pipeline rubric gates; `bbom_report.json` and `compliance_bbom_manifest.json` output artefacts |
+
+<Tip>
+  To produce a standards-compliant BBOM report, run the final notebook cell after evaluation completes. The cell reads `RUBRIC_LOG`, checks each gate against its BBOM layer requirement, and writes `bbom_report.json` with a pass/fail summary for each layer and a full evidence export for audit purposes.
+</Tip>
+
+## Putting It Together: A Measurement Science Checklist
+
+Use this checklist before publishing any ARTIFEX evaluation result:
+
+<Steps>
+  <Step title="IRT diagnostics">
+    Verify that all items have *a*ᵢ > 0 (no negative discrimination). Flag and remove items with *a*ᵢ ≈ 0 as low-information. Review the *b*ᵢ distribution for coverage across difficulty levels.
+  </Step>
+  <Step title="GLMM decomposition">
+    Run the variance decomposition and report all four components. If Cross-Lingual Variance > 20% of total variance, run DIF analysis and remove biased items before claiming cross-lingual generalisation.
+  </Step>
+  <Step title="Five facets of validity">
+    Confirm that the relevant notebook artefact exists for each validity claim you make. Do not claim external validity without running DIF analysis (v7.3). Do not claim consequential validity without a feedback loop audit.
+  </Step>
+  <Step title="BBOM compliance">
+    Run the final notebook audit cell and inspect `bbom_report.json`. Resolve all HIGH-severity gate failures before publishing. Document MEDIUM-severity failures as limitations.
+  </Step>
+  <Step title="Standards traceability">
+    Map every quantitative claim in your report to its standard (NIST AI 800-3 section, ISO/IEC 42119 clause, or AILuminate requirement). The BBOM manifest records the standard version and execution timestamp for each claim.
+  </Step>
+</Steps>

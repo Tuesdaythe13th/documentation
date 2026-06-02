@@ -1,0 +1,206 @@
+---
+title: "Install ARTIFEX Labs and Configure Your Environment"
+sidebarTitle: "Installation"
+description: "Install ARTIFEX Labs Python dependencies, configure API keys for LLM judges, and set up GPU acceleration for high-throughput safety evaluation."
+---
+
+ARTIFEX Labs runs on any machine with Python 3.10 or later. The core evaluator and data ingestion scripts have no mandatory API key requirements — all embedding and scoring work runs locally. API keys are only needed if you want to use a live LLM judge (OpenAI or Anthropic) in the Colab notebooks. This page walks you through every configuration option so you can set up the environment that matches your workload.
+
+## Prerequisites
+
+Before you install, confirm the following:
+
+- **Python 3.10 or later** — required for the CLI tools. Run `python --version` to check.
+- **A Google account** — required only if you are using the Google Colab notebooks. No local Python install is needed for the Colab path.
+- **A CUDA-capable GPU** — optional, but strongly recommended for large-scale evaluations. The evaluator uses mixed-precision (AMP) inference and supports fp16 weights on CUDA devices.
+
+## Install Python Dependencies
+
+Clone the repository first, then install from `requirements.txt`:
+
+```bash
+git clone https://github.com/Tuesdaythe13th/multilingualcompositionalsafety_evals.git
+cd multilingualcompositionalsafety_evals
+```
+
+<CodeGroup>
+
+```bash pip
+pip install -r requirements.txt
+```
+
+```bash uv
+uv pip install -r requirements.txt
+```
+
+</CodeGroup>
+
+<Tip>
+  `uv` (from Astral) resolves and installs packages 10–100× faster than `pip`, which makes a measurable difference in Colab 2026 environments where cold-start install time counts against your session quota. If `uv` is not yet installed, add it with `pip install uv` and then switch to `uv pip install` for subsequent installs.
+</Tip>
+
+### Key Dependencies
+
+The table below lists the packages that matter most for the evaluation pipeline and what each one does:
+
+| Package | Version | Role |
+|---|---|---|
+| `sentence-transformers` | `>=3.0` | Multilingual embedding model (`paraphrase-multilingual-MiniLM-L12-v2` default) |
+| `torch` | latest stable | Inference backend; required for AMP autocast and DataLoader |
+| `pandas` | latest | CSV output and tabular data handling |
+| `bertopic` | latest | Topic modelling over embedding clusters (Colab notebooks) |
+| `hdbscan` | latest | Soft-membership density clustering with `prediction_data=True` |
+| `umap-learn` | latest | Dimensionality reduction for cluster visualisation |
+| `pandera` | latest | `DataFrameSchema` validation of coverage metadata at ingestion |
+| `plotly` | latest | Interactive UMAP and fairness visualisations |
+| `scikit-learn` | latest | TF-IDF + TruncatedSVD offline stub embeddings; K-Means clustering |
+| `jsonschema` | latest | JSON Schema Draft-07 validation of JSONL records in `ingest.py` |
+| `pyyaml` | latest | Parsing `cultural_taxonomy.yaml` |
+
+## Configure API Keys for LLM Judges
+
+API keys are optional — the CLI evaluator and the embedding/clustering stages of every notebook run without them. You only need a key when a notebook cell calls a live LLM judge (OpenAI or Anthropic) for summarisation or multi-judge scoring.
+
+**In Google Colab**, add your keys through the Colab Secrets panel (the key icon in the left sidebar) rather than pasting them into cells. The notebooks read them with `userdata.get()`:
+
+| Secret name | Provider |
+|---|---|
+| `OPENAI_API_KEY` | OpenAI (GPT-4o, GPT-4-turbo, etc.) |
+| `ANTHROPIC_API_KEY` | Anthropic (Claude 3.x) |
+
+<Warning>
+  Never paste API keys directly into notebook cells or commit them to source control. Using Colab Secrets keeps your keys out of cell output and notebook history.
+</Warning>
+
+**In a local environment**, export keys as environment variables before running any script that calls an LLM judge:
+
+```bash
+export OPENAI_API_KEY="sk-..."
+export ANTHROPIC_API_KEY="sk-ant-..."
+```
+
+## GPU Acceleration
+
+If you have a CUDA-capable GPU, two CLI flags unlock significant throughput gains in `evaluator.py`:
+
+```bash
+python evaluator.py \
+    --input prompts.jsonl \
+    --output scores.csv \
+    --device cuda \
+    --half \
+    --batch-size 512 \
+    --num-workers 4 \
+    --resume
+```
+
+| Flag | Effect |
+|---|---|
+| `--device cuda` | Runs inference on the first available CUDA device. You can target a specific card with `--device cuda:1`. |
+| `--half` | Loads model weights in fp16 (half-precision). Approximately 2× faster on modern CUDA GPUs. CUDA only — has no effect on CPU. |
+| `--batch-size 512` | Number of records encoded per call. Increase for higher GPU utilisation; decrease if you hit out-of-memory errors. Default is `256`. |
+| `--num-workers 4` | DataLoader prefetch workers. Keeps the GPU fed while the CPU decodes the next batch. Default is `4`. |
+| `--resume` | Resumes from a `.checkpoint.json` file written alongside `--output`. Safe to use after an interrupted run. |
+| `--checkpoint-every 10000` | Flush the output CSV and write a checkpoint every N rows. Default is `10000`. Reduce this value for very large datasets where you want finer-grained recovery points. |
+| `--keep-checkpoint` | Retain the `.checkpoint.json` file after a successful full run. By default the checkpoint is deleted automatically when the run completes. |
+
+<Info>
+  The evaluator enables `torch.backends.cudnn.benchmark = True` automatically on CUDA devices, which selects the fastest convolution algorithm for your specific GPU after a short warm-up. The first batch may be slightly slower as a result.
+</Info>
+
+Mixed-precision (AMP) autocast is enabled automatically whenever `--device cuda` is active. You do not need to pass a separate flag for AMP — it switches on alongside the CUDA device selection.
+
+## Model and Threshold Selection
+
+By default, `evaluator.py` uses `paraphrase-multilingual-MiniLM-L12-v2`, a sentence-transformers model with support for 100+ languages. You can swap it for any compatible model using `--model`, and adjust the scoring threshold with `--threshold`:
+
+```bash
+python evaluator.py \
+    --input prompts.jsonl \
+    --output scores.csv \
+    --model intfloat/multilingual-e5-large-instruct \
+    --threshold 0.78
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--model` | `paraphrase-multilingual-MiniLM-L12-v2` | Sentence-transformers model name or local path. Alternatives include `BAAI/bge-m3` and `intfloat/multilingual-e5-large-instruct` for higher accuracy. |
+| `--threshold` | `0.78` | Cosine similarity threshold for the `Safe` label. Responses scoring at or above this value are labeled `Safe`; those between 90% and 100% of the threshold are `Borderline`; the rest are `Unsafe`. |
+
+<Tip>
+  If you supply a local model path (e.g. a directory created by `model.save()`), the evaluator loads it without any network access. This is useful for air-gapped deployments where you have pre-downloaded the model weights.
+</Tip>
+
+## Offline and CI Mode
+
+For network-restricted environments — including GitHub Actions runners with no internet access — pass `--stub-model` to skip all model downloads:
+
+```bash
+python evaluator.py \
+    --input sample_prompts_responses.jsonl \
+    --output /tmp/scores.csv \
+    --stub-model \
+    --device cpu \
+    --num-workers 0
+```
+
+`--stub-model` activates the `StubEncoder`, a deterministic hash-based offline encoder built into `evaluator.py`. It produces 128-dimensional unit-norm vectors seeded by the MD5 of each input string, so identical texts always yield identical embeddings — with no model download or internet connection required.
+
+<Warning>
+  The `StubEncoder` is designed exclusively for CI smoke tests and offline demos. Its embedding space is not semantically meaningful — similarity scores produced by the stub bear no relationship to the actual safety of a response. Never use `--stub-model` for real evaluations.
+</Warning>
+
+When running in network-restricted CI environments, combine `--stub-model` with `--device cpu` and `--num-workers 0` to keep the smoke test self-contained and dependency-light.
+
+## Data Ingestion with ingest.py
+
+Before you can run the evaluator on your own dataset, you need to validate and clean your JSONL file. `ingest.py` handles schema validation, duplicate detection, prompt length checks, and optional image integrity verification:
+
+```bash
+# Validate a local JSONL file — writes clean records to the output file
+python ingest.py \
+    --input raw_prompts.jsonl \
+    --output clean_prompts.jsonl
+```
+
+For a full pipeline that also downloads and verifies images from Google Cloud Storage, add `--image-dir` and `--bucket`:
+
+```bash
+python ingest.py \
+    --input raw_prompts.jsonl \
+    --output clean_prompts.jsonl \
+    --image-dir ./images \
+    --bucket gs://your-bucket/images \
+    --strict
+```
+
+| Flag | Required | Description |
+|---|---|---|
+| `--input` | Yes | Raw JSONL file to validate (one record per line). |
+| `--output` | Yes | Cleaned JSONL file containing only records that passed all QC checks. An `.errors.jsonl` sidecar file is written alongside it with any rejected records. |
+| `--image-dir` | No | Local directory for downloaded or cached images. Required if `--bucket` is set. |
+| `--bucket` | No | GCS bucket prefix for image download (e.g. `gs://my-bucket/images`). Images are verified against the `image_sha256` field in each record. |
+| `--strict` | No | Exit with code `1` if any record fails QC. Use this flag in CI to fail the pipeline on data errors rather than silently skipping bad records. |
+
+<Note>
+  `ingest.py` exits with code `0` when all records pass (or when soft failures are tolerated without `--strict`), and code `1` when `--strict` is set and at least one record fails. Downstream scripts such as `evaluator.py` should only receive the cleaned `--output` file.
+</Note>
+
+## Verify Your Installation
+
+Run the evaluator against the included sample dataset to confirm everything is working:
+
+```bash
+python evaluator.py \
+    --input sample_prompts_responses.jsonl \
+    --output scores.csv \
+    --threshold 0.78
+```
+
+You should see log output ending with a line similar to:
+
+```text
+10:42:17 [INFO] Done. 10 rows processed (0 skipped) in 3.2 s (3 rows/s). Results → scores.csv
+```
+
+Open `scores.csv` and confirm it contains the columns `prompt_id`, `prompt`, `response`, `language`, `culture`, `hazard`, `similarity`, and `safety_label`. If any column is missing, check that all packages in `requirements.txt` installed without errors.

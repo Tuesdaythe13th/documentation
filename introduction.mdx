@@ -1,0 +1,69 @@
+---
+title: "ARTIFEX Labs: Multilingual AI Safety Evaluation Suite"
+sidebarTitle: "Introduction"
+description: "ARTIFEX Labs benchmarks AI content-safety pipelines across languages, dialects, and cultural contexts using auditable rubrics and measurement science."
+---
+
+ARTIFEX Labs is a multilingual compositional safety evaluation suite that benchmarks AI content-safety pipelines across languages, dialects, and cultural contexts. Built around a formal 2026 measurement science framework, it combines production-grade Python CLI tools with self-contained Google Colab notebooks to produce auditable, standards-aligned safety evaluations. Whether you are stress-testing a deployed content moderation system or designing a rigorous benchmark for publication, ARTIFEX Labs gives you the measurement infrastructure to do it transparently and reproducibly.
+
+## Who ARTIFEX Labs Is For
+
+ARTIFEX Labs is designed for practitioners who need more than pass/fail accuracy numbers:
+
+- **AI safety engineers** validating content-moderation pipelines before deployment, especially across languages and locales where test coverage is typically thin.
+- **Benchmark designers** who need a verifiable supply-chain audit trail (BBOM) and machine-checkable rubric gates at every decision point in the pipeline.
+- **Researchers** studying cross-lingual value alignment, dialect divergence, or cultural harm categories — the suite ships a 10-dimension cultural taxonomy and dialect datasets out of the box.
+- **ML teams** running continuous integration on safety regressions — the CLI evaluator supports offline stub-model mode and checkpoint/resume for integration into any CI/CD workflow.
+
+## Key Capabilities
+
+**Multilingual evaluation across languages and dialects.** The core evaluator uses `paraphrase-multilingual-MiniLM-L12-v2` (100+ languages) and supports ensemble models such as RoBERTuito and multilingual-E5-Large. Dialect-level benchmarks cover Colombian Spanish, Castilian vs. Mexican Spanish, and US/UK/AU English, with BCP-47 language tagging throughout.
+
+**Adaptive Boolean Rubrics.** Every pipeline decision point is governed by a `BooleanRubricResult` dataclass — a machine-checkable, auditable gate that records the gate name, pass/fail outcome, confidence score, severity level, and raw evidence. Eleven rubric gates span dataset quality, embedding ensemble readiness, clustering stability, judge calibration, jury routing, and human-in-the-loop (HITL) triplet availability.
+
+**LLM-as-Judge with bias correction.** The suite uses calibrated LLM judges with bias-corrected θ̂ estimators and Pydantic structured outputs. Multi-judge majority voting (JSR/CCR metrics) is demonstrated in the Spanish AILuminate notebook across 500 jailbreak prompts.
+
+**Cultural harm taxonomy.** A 10-dimension `cultural_taxonomy.yaml` covers religious sensitivity, social norm violation, political content, historical trauma, language-specific taboo, hate, self-harm, violence, explicit content, and a generic fallback — each with geographic context, severity rating, and annotation examples.
+
+**Google Colab notebooks.** Eleven self-contained notebooks cover everything from a pedagogical evaluator design walkthrough to a full end-to-end safety pipeline. Each notebook includes a 2026 Measurement Science cell mapping its methodology to NIST AI 800-3 GLMMs, IRT 3PL construct validity, and the five facets of validity.
+
+**CLI tools.** Two production-grade Python scripts — `evaluator.py` and `ingest.py` — handle high-throughput scoring and data ingestion respectively. Both scripts support checkpoint/resume, strict-mode CI exits, and offline operation.
+
+## Standards Alignment
+
+ARTIFEX Labs aligns with three formal standards:
+
+| Standard | Version | ARTIFEX Implementation |
+|---|---|---|
+| **NIST AI 800-3** | 2026 | GLMM variance decomposition, benchmark vs. generalised accuracy |
+| **ISO/IEC 42119-2/3** | Oct 2025 | Testing techniques and verification & validation across the AI lifecycle |
+| **MLCommons AILuminate** | 2026 | Structured risk assurance and BBOM supply-chain audit |
+
+## Available Notebook Versions
+
+The suite ships eleven notebooks across five version lines:
+
+| Version | Notebooks | Highlights |
+|---|---|---|
+| **v3.1** | `ARTIFEX_v3.1_Advanced_Colab.ipynb`, `safety_routing_colab.ipynb` | Full ethical AI feedback loop, ydata-profiling EDA, K-Means clustering, LLM summarisation |
+| **v7.x** | v7.1 Core Swarm, v7.2 Spanish Benchmark, v7.3 Dialect Divergence, v7.4 Ethical Feedback Loop, v7.5 English Cultural Alignment | Adaptive Boolean rubrics, 68-prompt Colombian benchmark, Castilian/Mexican DIF analysis, US/UK/AU dialect alignment |
+| **v8** | `ARTIFEX_v8_Agentic_Alignment_Engine.ipynb`, `ARTIFEX_v8_E2E_Safety_Pipeline.ipynb` | LangGraph routing, VLM auditing, automated adversarial red-teaming |
+| **v9** | `ARTIFEX_v9_Ethical_Feedback_AILuminate.ipynb` | 500 jailbreak prompts × 4 categories, AILuminate structured risk assurance |
+| **v10** | `ARTIFEX_v10_Autoevaluator_Architecture.ipynb` | Autoevaluator architecture, full BBOM compliance manifest |
+
+## Explore ARTIFEX Labs
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Run your first multilingual safety evaluation in minutes using the CLI or a Colab notebook.
+  </Card>
+  <Card title="Safety Evaluation Concepts" icon="shield-halved" href="/concepts/safety-evaluation">
+    Learn how Boolean rubrics, LLM-as-Judge, and the BBOM supply chain work together.
+  </Card>
+  <Card title="Notebook Overview" icon="notebook" href="/notebooks/overview">
+    Browse all eleven Colab notebooks and find the right starting point for your use case.
+  </Card>
+  <Card title="Running Evaluations" icon="terminal" href="/guides/running-evaluations">
+    Deep-dive into CLI flags, checkpoint/resume, GPU acceleration, and batch tuning.
+  </Card>
+</CardGroup>

@@ -1,0 +1,92 @@
+{
+  "projectType": "ai-ml",
+  "projectName": "ARTIFEX Labs",
+  "projectDescription": "A multilingual compositional safety evaluation suite that benchmarks AI content-safety pipelines across languages, dialects, and cultural contexts using standards-aligned rubrics and measurement science.",
+  "theme": "luma",
+  "primaryColor": "#bd8236",
+  "lightColor": "#dad2cb",
+  "darkColor": "#fbab04",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/safety-evaluation",
+              "concepts/cultural-taxonomy",
+              "concepts/boolean-rubrics",
+              "concepts/measurement-science"
+            ]
+          },
+          {
+            "group": "Notebooks",
+            "pages": [
+              "notebooks/overview",
+              "notebooks/core-swarm",
+              "notebooks/spanish-benchmark",
+              "notebooks/dialect-divergence",
+              "notebooks/agentic-alignment",
+              "notebooks/fairness-dashboard"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/running-evaluations",
+              "guides/data-ingestion",
+              "guides/annotation",
+              "guides/interpreting-results"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/data-schema",
+              "reference/hazard-tags",
+              "reference/cli-flags",
+              "reference/standards-alignment"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Multilingual safety evaluation across 100+ languages using XLM-R embeddings",
+    "Adaptive Boolean Rubrics — 11-gate auditable pipeline with structured BooleanRubricResult dataclass",
+    "BBOM (Benchmark Bill of Materials) supply-chain auditing across 10 compliance layers",
+    "LLM-as-Judge with bias-corrected θ̂ estimators and Pydantic structured outputs",
+    "Cross-lingual X-Value Consensus/Pluralism framework for value alignment auditing",
+    "Human-in-the-Loop triplet active learning for borderline case resolution",
+    "IRT-calibrated benchmarks with NIST AI 800-3 GLMM variance decomposition",
+    "10-dimension cultural harm taxonomy covering hate, self-harm, political, religious, and historical harms",
+    "Self-contained Google Colab notebooks for each evaluation pipeline (v7–v10)",
+    "High-throughput CLI evaluator with checkpoint/resume, AMP inference, and multi-worker prefetch",
+    "FiftyOne visual dataset curation for multimodal annotation",
+    "Standards-aligned with NIST AI 800-3, ISO/IEC 42119-2/3, and MLCommons AILuminate"
+  ],
+  "publicApiSurface": [
+    "evaluator.py --input --output --model --threshold --batch-size --num-workers --device --half --resume --checkpoint-every --stub-model",
+    "ingest.py --input --output --image-dir --bucket --strict",
+    "BooleanRubricResult(name, passed, confidence, escalate, severity, reason, evidence)",
+    "JSONL record schema: id, prompt_en, prompt_local, culture, language, hazard_tag, image_url, image_sha256, cultural_relevance_score, metadata",
+    "Output CSV columns: prompt_id, prompt, response, language, culture, hazard, similarity, safety_label",
+    "cultural_taxonomy.yaml — 10-dimension cultural harm taxonomy with subcategories and severity ratings",
+    "schema.json — JSON Schema Draft-07 for AILuminate prompt records",
+    "Hazard tags: hate, self_harm, political, religious_sensitivity, violence, explicit, historical_trauma, social_norm_violation, language_specific_taboo, generic",
+    "Safety labels: Safe, Borderline, Unsafe (cosine-similarity threshold 0.78 default)",
+    "Pipeline routing: ONTOLOGICAL_VETO | ROUTED_TO_HUMAN | UNSAFE | SAFE",
+    "jury_vote() + route_item() — auditable jury routing replacing entropy threshold",
+    "StubEncoder — deterministic offline encoder for CI/network-restricted environments"
+  ]
+}

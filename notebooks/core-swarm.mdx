@@ -1,0 +1,127 @@
+---
+title: "ARTIFEX v7.1 Core Multilingual Safety Swarm Notebook"
+sidebarTitle: "Core Swarm"
+description: "Run the v7.1 Core Swarm to evaluate AI safety with Boolean rubrics, HDBSCAN clustering, a calibrated LLM-as-Judge, and triplet HITL active learning."
+---
+
+The v7.1 Core Multilingual Safety Swarm is the flagship notebook of the ARTIFEX evaluation suite and the recommended starting point for any new evaluation run. It brings together every major component of the ARTIFEX pipeline into a single, self-contained Colab notebook: adaptive Boolean rubric gates, a dual-encoder embedding ensemble, HDBSCAN soft-membership clustering, a calibrated LLM-as-Judge, and triplet Human-in-the-Loop (HITL) active learning queries. Every decision is logged to `RUBRIC_LOG` and audited in the final cell, giving you a fully traceable record of how each prompt was routed.
+
+<Note>
+  This notebook is marked ★ as a recommended starting point. If you are new to ARTIFEX, open this notebook first to understand the full pipeline before exploring the specialized dialect, benchmark, or agentic notebooks.
+</Note>
+
+## Open in Colab
+
+Click the link below to open the notebook directly in Google Colab:
+
+**[https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/ARTIFEX_v7_Compositional_Safety.ipynb](https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/ARTIFEX_v7_Compositional_Safety.ipynb)**
+
+| Property | Value |
+|---|---|
+| **Version** | v7.1 |
+| **Validity Facet** | Construct validity |
+| **Standards** | NIST AI 800-3 · ISO/IEC 42119-2/3 · MLCommons AILuminate |
+
+## What This Notebook Does
+
+The Core Swarm notebook evaluates AI model responses across multilingual and multicultural safety dimensions by running every prompt through an 11-gate Boolean rubric pipeline. At each gate, the notebook makes a machine-checkable pass/fail decision, records the decision and its evidence in `RUBRIC_LOG`, and routes failed items to the appropriate escalation path — HITL queue, ONTOLOGICAL_VETO, or direct UNSAFE label. The pipeline targets **construct validity**: it uses BERTopic coherence scores and `BooleanRubricResult` gates together to ensure the evaluation instrument is actually measuring what it claims to measure.
+
+## Key Pipeline Components
+
+<CardGroup cols={2}>
+  <Card title="Adaptive Boolean Rubrics" icon="check-double">
+    Every pipeline decision is encoded as a `BooleanRubricResult` dataclass with fields for `passed`, `confidence`, `escalate`, `severity` (HIGH/MEDIUM/LOW/INFO), `reason`, and `evidence`. All rubric results are appended to `RUBRIC_LOG` and dumped in the final audit cell.
+  </Card>
+  <Card title="Dual-Encoder Embeddings" icon="vector-square">
+    The notebook ensembles **RoBERTuito** (optimized for Spanish social media) and **multilingual-E5-Large** into a single embedding representation. When network access is unavailable, it falls back to the offline `paraphrase-multilingual-MiniLM-L12-v2` stub.
+  </Card>
+  <Card title="HDBSCAN + BERTopic Clustering" icon="diagram-project">
+    HDBSCAN with `prediction_data=True` produces soft cluster memberships — each prompt receives a probability distribution over topics rather than a hard assignment. BERTopic uses these memberships to generate human-readable topic labels and coherence scores that gate the `cluster_stability_sufficient` rubric.
+  </Card>
+  <Card title="Calibrated LLM-as-Judge" icon="scale-balanced">
+    The LLM judge applies a **bias-corrected θ̂ estimator** (following Zheng et al., arXiv:2503.23339) to correct for position bias, verbosity bias, and self-enhancement. Structured Pydantic outputs ensure every verdict is machine-parseable.
+  </Card>
+  <Card title="Triplet HITL Active Learning" icon="users">
+    When the jury routing returns `ROUTED_TO_HUMAN`, the notebook generates **triplet active learning queries** — each query presents an anchor, a positive example, and a negative example — following the Beyond Labels framework (arXiv:2602.15738). This approach elicits more informative human feedback than binary annotation.
+  </Card>
+  <Card title="FiftyOne Visual Curation" icon="eye">
+    The notebook integrates **FiftyOne** (Voxel51) to launch a visual dataset curation dashboard. You can inspect individual samples, filter by cluster, severity, or routing decision, and export curated subsets for downstream fine-tuning.
+  </Card>
+</CardGroup>
+
+## Step-by-Step Walkthrough
+
+<Steps>
+  <Step title="Open the notebook">
+    Click the Colab link above. The notebook opens with all cells pre-populated. You do not need to clone the repository or install anything locally.
+  </Step>
+  <Step title="Add API keys">
+    Open the **Secrets** panel in Colab (key icon, left sidebar). Add `OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY` if you want LLM-as-Judge and summarization features. The notebook detects available keys automatically and falls back to extractive summarization if none are provided.
+  </Step>
+  <Step title="Configure inputs">
+    In the configuration cell (Cell 2), set the path to your input JSONL file. Each line must follow the ARTIFEX schema: `id`, `prompt_en`, `prompt_local`, `culture`, `language`, `hazard_tag`, and `response`. You can upload a file directly to the Colab working directory or mount Google Drive.
+  </Step>
+  <Step title="Run all cells">
+    Select **Runtime → Run all**. The pipeline runs in sequence: data ingestion and QC → embedding → clustering → jury routing → LLM-as-Judge → HITL queries → FiftyOne curation → audit dump. Each stage appends its `BooleanRubricResult` entries to `RUBRIC_LOG`.
+  </Step>
+  <Step title="Inspect the § 2026 Measurement Science cell">
+    This cell (automatically included) maps the current run's methodology to NIST AI 800-3 GLMMs, IRT 3PL item-level diagnostics, and the five validity facets. It computes IRT θ̂ per sample and flags any items with negative discrimination (a_i &lt; 0) as annotation errors — a hard BBOM Layer 9 failure gate.
+  </Step>
+  <Step title="Review outputs">
+    The final cell dumps the full `RUBRIC_LOG` audit trail, writes a `RUBRIC_LOG_audit.json` file, and displays the FiftyOne dashboard URL. Check the cluster assignments, safety labels, and HITL queue for any items requiring human review.
+  </Step>
+</Steps>
+
+## The 11-Gate Rubric Pipeline
+
+The Core Swarm runs every item through 11 Boolean gates organized into four pipeline layers:
+
+| Layer | Gate | Failure Route |
+|---|---|---|
+| **Dataset** | `dataset_size_sufficient` | `LOW_STAT_POWER` |
+| **Dataset** | `coverage_metadata_present` | `BBOM_L9_FAILED` |
+| **Dataset** | `dialect_validated` | `MEASUREMENT_RISK` |
+| **Embedding** | `embedding_ensemble_ready` | Single-mode only |
+| **Clustering** | `soft_membership_available` | Hard-assign only |
+| **Clustering** | `cluster_stability_sufficient` | `UNSTABLE_TOPICS` |
+| **Judge** | `human_calibration_present` | No calibration claims |
+| **Judge** | `judge_bias_correctable` | Human-only report |
+| **Routing** | `jury_disagreement_high` | HITL |
+| **Routing** | `ontological_veto_triggered` | Benchmark failure |
+| **HITL** | `active_learning_triplets_available` | No triplet query |
+
+<Tip>
+  If your run consistently triggers `LOW_STAT_POWER`, your dataset has fewer than the minimum recommended items for stable IRT calibration. The ARTIFEX roadmap recommends integrating public HuggingFace safety datasets (≥500 items) to unblock this gate.
+</Tip>
+
+## Jury Routing Architecture
+
+The Core Swarm replaces a brittle entropy threshold with an auditable jury routing system:
+
+```python
+# Old routing (brittle):
+if entropy > 0.9:
+    route = "ROUTED_TO_HUMAN"
+
+# New routing (auditable):
+jury  = jury_vote(verdicts)
+route, jury_rubric, veto_rubric = route_item(jury, soft_gap, ontological_veto)
+# → ONTOLOGICAL_VETO | ROUTED_TO_HUMAN | UNSAFE | SAFE
+```
+
+The `jury_vote()` function aggregates multiple judge verdicts, and `route_item()` produces two `BooleanRubricResult` objects — one for the jury decision and one for any ontological veto — before committing to a routing outcome.
+
+## Outputs
+
+After a complete run, the notebook produces the following artifacts in the Colab working directory:
+
+| Artifact | Contents |
+|---|---|
+| `RUBRIC_LOG_audit.json` | Full audit dump of all `BooleanRubricResult` entries for every item |
+| `scores.csv` | Per-item safety labels (`Safe`, `Borderline`, `Unsafe`), cosine similarity scores, and routing decisions |
+| `cluster_assignments.json` | HDBSCAN soft membership probabilities and BERTopic topic labels per item |
+| FiftyOne dashboard | Visual curation interface (URL printed in the final cell) |
+
+<Info>
+  The `RUBRIC_LOG_audit.json` file is the primary compliance artifact for BBOM (Benchmark Bill of Materials) audit purposes. It records every gate decision, its confidence, evidence values, and escalation status — the information required for NIST AI 800-3 and ISO/IEC 42119 compliance documentation.
+</Info>

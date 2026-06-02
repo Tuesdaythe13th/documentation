@@ -1,0 +1,104 @@
+---
+title: "ARTIFEX Labs Safety Evaluation Notebooks: Full Index"
+sidebarTitle: "Overview"
+description: "Open any ARTIFEX Colab notebook in your browser — multilingual safety, dialect divergence, agentic alignment, and fairness dashboards with no local setup."
+---
+
+The ARTIFEX Labs notebook suite is a collection of self-contained Google Colab notebooks, each implementing a distinct evaluation pipeline within the ARTIFEX v7–v10 multilingual compositional safety evaluation framework. You can open any notebook directly in your browser, run the full pipeline without any local setup, and inspect every decision through structured audit logs. The notebooks span multilingual safety benchmarking, dialect divergence analysis, agentic alignment evaluation, cohort fairness analysis, and pedagogical design guides — all grounded in the 2026 Measurement Science framework and aligned to NIST AI 800-3, ISO/IEC 42119, and MLCommons AILuminate standards.
+
+## How to Open and Run Any Notebook
+
+<Steps>
+  <Step title="Click 'Open in Colab'">
+    Find the notebook you want in the table below and click its Colab link or badge. This opens the notebook directly in Google Colab — no cloning or local install required.
+  </Step>
+  <Step title="Start the runtime">
+    In Colab, select **Runtime → Run all** to execute every cell in sequence. You can also step through cells individually if you want to inspect intermediate outputs.
+  </Step>
+  <Step title="Add API keys via Secrets">
+    If a notebook calls an external LLM (OpenAI, Anthropic), you will be prompted to supply your API key. Add it through the Colab **Secrets** panel (the key icon in the left sidebar) using the variable name shown in the notebook — typically `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`. The notebooks never hard-code credentials.
+  </Step>
+  <Step title="Inspect outputs">
+    Each notebook writes structured outputs — CSV files, JSON manifests, visualizations — into the Colab working directory. The final cell dumps the full `RUBRIC_LOG` audit trail so you can verify every pipeline decision.
+  </Step>
+</Steps>
+
+<Note>
+  Every notebook in the suite includes a **§ 2026 Measurement Science** cell that maps the notebook's methodology to NIST AI 800-3 Generalized Linear Mixed Models (GLMMs), IRT 3PL item-level diagnostics, and all five facets of validity (content, construct, criterion, external, consequential). This cell runs automatically and appends its output to the audit log.
+</Note>
+
+## Prerequisites
+
+<CardGroup cols={2}>
+  <Card title="Google Account" icon="google">
+    A free Google account is all you need to open and run any notebook in Google Colab. No local Python environment or GPU is required.
+  </Card>
+  <Card title="API Keys (Optional)" icon="key">
+    OpenAI or Anthropic API keys unlock LLM-as-Judge and summarization features. Without keys, notebooks fall back to extractive summarization and the offline `StubEncoder`. Add keys via Colab Secrets — never paste them into cells.
+  </Card>
+</CardGroup>
+
+## Full Notebook Index
+
+The table below lists every notebook in the suite with its Colab link, description, and the validity facet it primarily addresses. Notebooks marked ★ are recommended starting points.
+
+| Notebook | Colab | Description | Validity Facet |
+|---|---|---|---|
+| **safety_routing** ★ | [Open](https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/safety_routing_colab.ipynb) | **Ethical AI Feedback Loop Analysis** — Full ARTIFEX Labs v3.1 pipeline: uv install, Colab Secrets, ydata-profiling EDA, sentence-transformers embeddings, K-Means clustering, LLM summarization (OpenAI / Anthropic / extractive), Brutalist HTML explainers, `%watermark` audit. | Consequential validity |
+| **v7.1 Core Swarm** ★ | [Open](https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/ARTIFEX_v7_Compositional_Safety.ipynb) | **Core Multilingual Swarm** — Adaptive Boolean rubrics, jury routing, dual-encoder embeddings, HDBSCAN soft memberships, calibrated LLM-as-Judge, triplet HITL, FiftyOne model evaluation. | Construct validity |
+| **v7.2 Spanish Benchmark** | [Open](https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/ARTIFEX_v7.2_Spanish_Benchmark.ipynb) | **Spanish Benchmark Edition** — 68-prompt Colombian-context benchmark, X-Value Consensus/Pluralism Radar charts, DIF detection, bias-corrected LLM-as-Judge. | Content validity |
+| **v7.3 Dialect Divergence** | [Open](https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/ARTIFEX_v7.3_Dialect_Divergence.ipynb) | **Dialect Divergence Benchmark** — Castilian vs. Mexican Spanish, 200-pair parallel corpus, IRT-based DIF analysis, common-person IRT linking. | External validity |
+| **v7.4 Ethical Feedback Loop** | [Open](https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/ARTIFEX_v7.4_Ethical_Feedback_Loop.ipynb) | **Ethical Feedback Loop** — Agentic benchmarking, time-horizon metric, propensity vs. capability distinction. | Consequential validity |
+| **v7.5 English Cultural Alignment** | [Open](https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/ARTIFEX_v7.5_English_Cultural_Alignment.ipynb) | **English Cultural Alignment** — US/UK/AU English dialects, spelling/idiom/politeness variation, per-sample IRT θ̂ metrics. | Criterion validity |
+| **v8 Agentic Alignment Engine** | [Open](https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/ARTIFEX_v8_Agentic_Alignment_Engine.ipynb) | **Agentic Alignment Engine** — LangGraph routing, VLM auditing, automated adversarial red-teaming, multi-agent safety alignment. | Construct validity |
+| **v9 Spanish AILuminate** | [Open](https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/spanish_ailuminate_hf_colab.ipynb) | **Spanish AILuminate Jailbreaking** — 500 jailbreak prompts × 4 categories, Qwen3-235B MUT, 3-judge majority voting (JSR/CCR metrics), BLOCK/WARNING/PASS gates. | Content validity |
+| **v10 Autoevaluator Architecture** | — | **Autoevaluator Architecture** — v10 autoevaluator architecture and pedagogical design walkthrough. | — |
+| **Evaluator Design Guide** | [Open](https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/ARTIFEX_Evaluator_Design_Guide.ipynb) | **Evaluator Design Guide** — Pedagogical walkthrough of all three evaluator architectures, mechanistic interpretability, rubric engineering, 2026 SOTA model selection. | — |
+| **Fairness Dashboard** | [Open](https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/fairness_failure_dashboard.ipynb) | **Cohort Fairness & Failure Clusters** — Loads `results/*_metrics.json` files, per-language micro_f1 gap analysis, structured failure cluster manifest. | External validity |
+
+## Featured Notebooks
+
+<CardGroup cols={2}>
+  <Card
+    title="Core Swarm (v7.1)"
+    icon="layer-group"
+    href="/notebooks/core-swarm"
+  >
+    The flagship multilingual safety evaluation pipeline. Start here for adaptive Boolean rubrics, dual-encoder embeddings, HDBSCAN clustering, and triplet HITL active learning.
+  </Card>
+  <Card
+    title="Spanish Benchmark (v7.2)"
+    icon="language"
+    href="/notebooks/spanish-benchmark"
+  >
+    A 68-prompt Colombian-context safety benchmark with X-Value Radar charts and DIF detection for content validity.
+  </Card>
+  <Card
+    title="Dialect Divergence (v7.3)"
+    icon="chart-scatter"
+    href="/notebooks/dialect-divergence"
+  >
+    Cross-dialect safety evaluation across Castilian and Mexican Spanish using a 200-pair parallel corpus and IRT-based DIF analysis.
+  </Card>
+  <Card
+    title="Agentic Alignment (v8)"
+    icon="robot"
+    href="/notebooks/agentic-alignment"
+  >
+    Multi-agent safety evaluation with LangGraph routing, VLM auditing, and automated adversarial red-teaming.
+  </Card>
+  <Card
+    title="Fairness Dashboard"
+    icon="chart-bar"
+    href="/notebooks/fairness-dashboard"
+  >
+    Cohort fairness analysis and 3D failure cluster visualization across per-language micro_f1 gaps.
+  </Card>
+  <Card
+    title="Evaluator Design Guide"
+    icon="book-open"
+    href="https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/ARTIFEX_Evaluator_Design_Guide.ipynb"
+  >
+    A pedagogical walkthrough of all three ARTIFEX evaluator architectures, rubric engineering practices, and 2026 SOTA model selection guidance.
+  </Card>
+</CardGroup>
