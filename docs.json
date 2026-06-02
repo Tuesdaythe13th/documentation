@@ -22,7 +22,7 @@
     "tabs": [
       {
         "tab": "Documentation",
-        "groups": [
+        "pages": [
           {
             "group": "Get Started",
             "pages": [
@@ -37,7 +37,9 @@
               "concepts/safety-evaluation",
               "concepts/cultural-taxonomy",
               "concepts/boolean-rubrics",
-              "concepts/measurement-science"
+              "concepts/measurement-science",
+              "concepts/failure-modes",
+              "concepts/failure-mode-taxonomy-expansion"
             ]
           },
           {
@@ -66,9 +68,13 @@
               "reference/data-schema",
               "reference/hazard-tags",
               "reference/cli-flags",
-              "reference/standards-alignment"
+              "reference/standards-alignment",
+              "reference/unified-evaluator-architecture",
+              "reference/evaluator-plain-language-guide",
+              "reference/unified-evaluator-architecture-v1"
             ]
-          }
+          },
+          "AGENTS"
         ]
       }
     ]
