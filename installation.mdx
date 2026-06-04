@@ -84,7 +84,7 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 If you have a CUDA-capable GPU, two CLI flags unlock significant throughput gains in `evaluator.py`:
 
 ```bash
-python evaluator.py \
+python scripts/evaluator.py \
     --input prompts.jsonl \
     --output scores.csv \
     --device cuda \
@@ -115,7 +115,7 @@ Mixed-precision (AMP) autocast is enabled automatically whenever `--device cuda`
 By default, `evaluator.py` uses `paraphrase-multilingual-MiniLM-L12-v2`, a sentence-transformers model with support for 100+ languages. You can swap it for any compatible model using `--model`, and adjust the scoring threshold with `--threshold`:
 
 ```bash
-python evaluator.py \
+python scripts/evaluator.py \
     --input prompts.jsonl \
     --output scores.csv \
     --model intfloat/multilingual-e5-large-instruct \
@@ -136,8 +136,8 @@ python evaluator.py \
 For network-restricted environments — including GitHub Actions runners with no internet access — pass `--stub-model` to skip all model downloads:
 
 ```bash
-python evaluator.py \
-    --input sample_prompts_responses.jsonl \
+python scripts/evaluator.py \
+    --input data/sample_prompts_responses.jsonl \
     --output /tmp/scores.csv \
     --stub-model \
     --device cpu \
@@ -158,7 +158,7 @@ Before you can run the evaluator on your own dataset, you need to validate and c
 
 ```bash
 # Validate a local JSONL file — writes clean records to the output file
-python ingest.py \
+python scripts/ingest.py \
     --input raw_prompts.jsonl \
     --output clean_prompts.jsonl
 ```
@@ -166,7 +166,7 @@ python ingest.py \
 For a full pipeline that also downloads and verifies images from Google Cloud Storage, add `--image-dir` and `--bucket`:
 
 ```bash
-python ingest.py \
+python scripts/ingest.py \
     --input raw_prompts.jsonl \
     --output clean_prompts.jsonl \
     --image-dir ./images \
@@ -191,8 +191,8 @@ python ingest.py \
 Run the evaluator against the included sample dataset to confirm everything is working:
 
 ```bash
-python evaluator.py \
-    --input sample_prompts_responses.jsonl \
+python scripts/evaluator.py \
+    --input data/sample_prompts_responses.jsonl \
     --output scores.csv \
     --threshold 0.78
 ```
