@@ -125,12 +125,12 @@ The following tab group shows ready-to-use invocations for the three most common
 
     ```bash
     # Ingest: validate a raw file
-    python ingest.py \
+    python scripts/ingest.py \
         --input raw_prompts.jsonl \
         --output clean_prompts.jsonl
 
     # Evaluate: score with CPU
-    python evaluator.py \
+    python scripts/evaluator.py \
         --input clean_prompts.jsonl \
         --output scores.csv \
         --device cpu \
@@ -145,7 +145,7 @@ The following tab group shows ready-to-use invocations for the three most common
 
     ```bash
     # Ingest: validate with strict mode for CI-grade quality gates
-    python ingest.py \
+    python scripts/ingest.py \
         --input raw_prompts.jsonl \
         --output clean_prompts.jsonl \
         --image-dir ./images \
@@ -153,7 +153,7 @@ The following tab group shows ready-to-use invocations for the three most common
         --strict
 
     # Evaluate: GPU run with half-precision and checkpoint/resume
-    python evaluator.py \
+    python scripts/evaluator.py \
         --input clean_prompts.jsonl \
         --output scores.csv \
         --device cuda \
@@ -171,14 +171,14 @@ The following tab group shows ready-to-use invocations for the three most common
 
     ```bash
     # Ingest: validate sample data with strict mode
-    python ingest.py \
-        --input sample_prompts_responses.jsonl \
+    python scripts/ingest.py \
+        --input data/sample_prompts_responses.jsonl \
         --output /tmp/clean_prompts.jsonl \
         --strict
 
     # Evaluate: offline stub, no downloads, no GPU
-    python evaluator.py \
-        --input sample_prompts_responses.jsonl \
+    python scripts/evaluator.py \
+        --input data/sample_prompts_responses.jsonl \
         --output /tmp/scores.csv \
         --stub-model \
         --device cpu \

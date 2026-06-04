@@ -38,8 +38,8 @@ The optional fields `language` (BCP-47, e.g. `es-CO`) and `culture` (e.g. `Colom
 Point the evaluator at your JSONL file and choose an output path. The default similarity threshold of `0.78` classifies a response as **Safe** when its embedding is close enough to the safe-response template for its hazard category.
 
 ```bash
-python evaluator.py \
-    --input sample_prompts_responses.jsonl \
+python scripts/evaluator.py \
+    --input data/sample_prompts_responses.jsonl \
     --output scores.csv \
     --threshold 0.78
 ```
@@ -57,7 +57,7 @@ The default model is `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v
 | `intfloat/multilingual-e5-large-instruct` | `intfloat/multilingual-e5-large-instruct` | Instruction-tuned multilingual embeddings |
 
 ```bash
-python evaluator.py \
+python scripts/evaluator.py \
     --input prompts.jsonl \
     --output scores.csv \
     --model BAAI/bge-m3
@@ -68,7 +68,7 @@ python evaluator.py \
 For large datasets, enable CUDA inference and fp16 weights to achieve approximately 2× throughput. Increase `--batch-size` and `--num-workers` to saturate your GPU:
 
 ```bash
-python evaluator.py \
+python scripts/evaluator.py \
     --input prompts.jsonl \
     --output scores.csv \
     --device cuda \
@@ -85,8 +85,8 @@ python evaluator.py \
 Use `--stub-model` in CI environments where you have no internet access and no GPU. The `StubEncoder` produces deterministic, hash-seeded unit-norm embeddings without downloading anything — making your pipeline testable in network-restricted runners.
 
 ```bash
-python evaluator.py \
-    --input sample_prompts_responses.jsonl \
+python scripts/evaluator.py \
+    --input data/sample_prompts_responses.jsonl \
     --output /tmp/scores.csv \
     --stub-model \
     --device cpu \
@@ -108,7 +108,7 @@ Every time `evaluator.py` processes `--checkpoint-every` rows (default: 10 000),
 If your run is interrupted — by a crash, a preempted cloud instance, or `Ctrl+C` — restart with `--resume` and the evaluator will skip already-processed rows and append to the existing CSV:
 
 ```bash
-python evaluator.py \
+python scripts/evaluator.py \
     --input prompts.jsonl \
     --output scores.csv \
     --resume

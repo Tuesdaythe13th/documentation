@@ -19,7 +19,7 @@ ARTIFEX Labs gives you two paths to your first safety evaluation: a zero-install
   <Step title="Option A — Google Colab (recommended for first-time users)">
     The Colab notebooks are self-contained: they install their own dependencies, authenticate via Colab Secrets, and run end-to-end without any local setup.
 
-    1. Open the [ARTIFEX v7.1 Core Swarm notebook](https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/ARTIFEX_v7_Compositional_Safety.ipynb) or any other notebook from the [Notebook Overview](/notebooks/overview).
+    1. Open the [ARTIFEX v7.1 Core Swarm notebook](https://colab.research.google.com/github/Tuesdaythe13th/multilingualcompositionalsafety_evals/blob/main/notebooks/ARTIFEX_v7_Compositional_Safety.ipynb) or any other notebook from the [Notebook Overview](/notebooks/overview).
     2. In Colab, select **Runtime → Run all** to execute every cell in sequence. You can also step through cells individually to follow the pipeline.
     3. When the notebook prompts for API credentials, open the **Colab Secrets** panel (the key icon in the left sidebar) and add your keys:
 
@@ -56,8 +56,8 @@ ARTIFEX Labs gives you two paths to your first safety evaluation: a zero-install
     **3. Run the evaluator on the sample dataset**
 
     ```bash
-    python evaluator.py \
-        --input sample_prompts_responses.jsonl \
+    python scripts/evaluator.py \
+        --input data/sample_prompts_responses.jsonl \
         --output scores.csv \
         --threshold 0.78
     ```
